@@ -1,0 +1,1349 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<style>
+/* Dashboard cards */
+.dashboard-card {
+    background-color: var(--card-bg, white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+    height: 100%;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-md);
+}
+
+.dashboard-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dashboard-card-title i {
+    color: var(--primary);
+}
+
+/* Stats */
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--gray-500);
+    margin-top: 0.25rem;
+}
+
+.stat-change {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: 50px;
+    margin-top: 0.5rem;
+}
+
+.stat-change.positive {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: #15803d;
+}
+
+.stat-change.negative {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #b91c1c;
+}
+
+.stat-change i {
+    margin-right: 0.25rem;
+}
+
+/* Recent applications */
+.application-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.application-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.application-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 1rem;
+    border: 2px solid white;
+    box-shadow: var(--shadow-xs);
+}
+
+.application-info {
+    flex: 1;
+}
+
+.application-name {
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 0.25rem;
+}
+
+.application-meta {
+    display: flex;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--gray-500);
+}
+
+.application-meta > div {
+    display: flex;
+    align-items: center;
+    margin-right: 1rem;
+}
+
+.application-meta i {
+    margin-right: 0.25rem;
+}
+
+.application-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Badge styling */
+.badge {
+    padding: 0.35em 0.65em;
+    font-size: 0.75em;
+    font-weight: 500;
+    border-radius: 50px;
+}
+
+/* Chart containers */
+.chart-container {
+    height: 250px;
+    position: relative;
+}
+
+/* Table styling */
+.table-responsive {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+}
+
+.table th {
+    background-color: rgba(249, 250, 251, 0.5);
+    color: var(--gray-700);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+.table td {
+    vertical-align: middle;
+    color: var(--gray-800);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(79, 70, 229, 0.05);
+}
+
+/* Upcoming jobs */
+.job-item {
+    display: flex;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.job-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.job-date {
+    min-width: 60px;
+    margin-right: 1rem;
+    text-align: center;
+}
+
+.job-day {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    line-height: 1;
+}
+
+.job-month {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    text-transform: uppercase;
+}
+
+.job-content {
+    flex: 1;
+}
+
+.job-title {
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 0.25rem;
+}
+
+.job-company {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    margin-bottom: 0.5rem;
+}
+
+.job-meta {
+    display: flex;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--gray-500);
+}
+
+.job-meta > div {
+    display: flex;
+    align-items: center;
+    margin-right: 1rem;
+}
+
+.job-meta i {
+    margin-right: 0.25rem;
+}
+</style>
+
+{% if show_profile_reminder %}
+<!-- Profile Reminder Modal -->
+<div class="modal fade" id="profileReminderModal" tabindex="-1" aria-labelledby="profileReminderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="profileReminderModalLabel">Complete Your Profile</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                        <i class="fas fa-user-circle fa-3x text-primary"></i>
+                    </div>
+                    <h4>Your profile is incomplete!</h4>
+                    <p class="text-muted">A complete profile helps you stand out and get better matches.</p>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('profile', dismiss='true') }}" class="btn btn-outline-secondary">
+                        Remind me later
+                    </a>
+                    <a href="{{ url_for('profile') }}" class="btn btn-primary">
+                        Complete profile now
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- User greeting and stats section -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h3 mb-0">Welcome, {{ current_user.name }}!</h1>
+        <p class="text-muted">
+            {% if current_user.user_type == 'worker' %}
+                Find jobs that match your skills and experience.
+                {% if worker_rating %}
+                <div class="mt-2">
+                    <span class="badge bg-warning text-dark">
+                        <i class="fas fa-star me-1"></i> Your Rating: {{ "%.1f"|format(worker_rating) }}/5
+                    </span>
+                </div>
+                {% endif %}
+            {% else %}
+                Manage your jobs and find workers for your needs.
+                {% if is_premium %}
+                <span class="badge bg-gradient-primary-to-secondary text-white ms-2">
+                    <i class="fas fa-crown me-1"></i> Premium
+                </span>
+                {% else %}
+                <a href="{{ url_for('premium_subscription') }}" class="badge bg-light text-dark ms-2 text-decoration-none">
+                    <i class="fas fa-crown me-1 text-warning"></i> Upgrade to Premium
+                </a>
+                {% endif %}
+            {% endif %}
+        </p>
+    </div>
+    <div class="col-md-4 text-end">
+        <div class="text-muted">
+            <div><i class="fas fa-map-marker-alt me-1"></i> {{ current_user.location or "Location not set" }}</div>
+            <div><i class="fas fa-envelope me-1"></i> {{ current_user.email }}</div>
+            </div>
+        </div>
+    </div>
+
+    {% if current_user.user_type == 'worker' %}
+<!-- Worker Dashboard -->
+<div class="row">
+    <!-- Quick Actions Panel -->
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-3"><i class="fas fa-bolt text-warning me-2"></i>Quick Actions</h5>
+                
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <a href="{{ url_for('job_listings') }}" class="text-decoration-none">
+                            <div class="card border-0 h-100 bg-light">
+                                <div class="card-body text-center p-4">
+                                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                                        <i class="fas fa-search fa-lg text-white"></i>
+                                    </div>
+                                    <h6 class="fw-bold">Find Jobs</h6>
+                                    <p class="text-muted small mb-0">Browse all available jobs in your area</p>
+                                </div>
+            </div>
+                            </a>
+                        </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('chat_list') }}" class="text-decoration-none">
+                            <div class="card border-0 h-100 bg-light">
+                                <div class="card-body text-center p-4">
+                                    <div class="rounded-circle bg-info d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                                        <i class="fas fa-comments fa-lg text-white"></i>
+                                    </div>
+                                    <h6 class="fw-bold">Messages</h6>
+                                    <p class="text-muted small mb-0">Chat with employers about job opportunities</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{{ url_for('profile') }}" class="text-decoration-none">
+                            <div class="card border-0 h-100 bg-light">
+                                <div class="card-body text-center p-4">
+                                    <div class="rounded-circle bg-success d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                                        <i class="fas fa-user-circle fa-lg text-white"></i>
+                                    </div>
+                                    <h6 class="fw-bold">Update Profile</h6>
+                                    <p class="text-muted small mb-0">Update your skills and profile information</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <form action="{{ url_for('job_listings') }}" method="GET">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0">
+                                <i class="fas fa-search text-muted"></i>
+                            </span>
+                            <input type="text" name="title" class="form-control border-start-0" placeholder="Search jobs by title...">
+                            <button type="submit" class="btn btn-primary px-4">Search</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Job Invitations Section -->
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header py-3">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas fa-envelope-open-text text-white"></i>
+                    </div>
+                    <h5 class="mb-0 fw-bold">Job Invitations</h5>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% set employer_invitations = applications|selectattr('initiated_by', 'equalto', 'employer')|list %}
+                {% if employer_invitations %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Job Title</th>
+                                <th>Employer</th>
+                                <th>Location</th>
+                                <th>Work Date</th>
+                                <th>Wage</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invitation in employer_invitations %}
+                            <tr>
+                                <td class="ps-4">{{ invitation.job.title }}</td>
+                                <td>{{ invitation.job.employer.name }}</td>
+                                <td><i class="fas fa-map-marker-alt text-secondary me-1"></i> {{ invitation.job.location }}</td>
+                                <td><i class="fas fa-calendar-alt text-secondary me-1"></i> {{ invitation.job.work_date.strftime('%b %d, %Y') }}</td>
+                                <td><i class="fas fa-rupee-sign text-secondary me-1"></i> {{ invitation.job.wage }}/day</td>
+                                <td>
+                                    <span class="badge {% if invitation.status == 'accepted' %}bg-success{% elif invitation.status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %} rounded-pill">
+                                        {{ invitation.status }}
+                                    </span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    {% if invitation.status == 'pending' and not invitation.worker_approved %}
+                                    <div class="btn-group">
+                                    <form action="{{ url_for('update_application_status', application_id=invitation.id) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="action" value="approve">
+                                            <button type="submit" class="btn btn-sm btn-success rounded-pill me-1">
+                                                <i class="fas fa-check me-1"></i> Accept
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('update_application_status', application_id=invitation.id) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="action" value="reject">
+                                            <button type="submit" class="btn btn-sm btn-danger rounded-pill">
+                                                <i class="fas fa-times me-1"></i> Reject
+                                        </button>
+                                    </form>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4076/4076503.png" alt="No invitations" class="img-fluid mb-3" style="max-height: 100px; opacity: 0.5;">
+                    <p class="text-muted mb-0">No job invitations from employers at this time.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Worker's Upcoming Jobs Section -->
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header py-3">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-success d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas fa-calendar-check text-white"></i>
+                    </div>
+                    <h5 class="mb-0 fw-bold">Your Upcoming Jobs</h5>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% set accepted_jobs = applications|selectattr('status', 'equalto', 'accepted')|list %}
+                {% if accepted_jobs %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Job Title</th>
+                                <th>Employer</th>
+                                <th>Location</th>
+                                <th>Work Date</th>
+                                <th>Wage</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job_app in accepted_jobs %}
+                            <tr>
+                                <td class="ps-4">{{ job_app.job.title }}</td>
+                                <td>{{ job_app.job.employer.name }}</td>
+                                <td><i class="fas fa-map-marker-alt text-secondary me-1"></i> {{ job_app.job.location }}</td>
+                                <td><i class="fas fa-calendar-alt text-secondary me-1"></i> {{ job_app.job.work_date.strftime('%b %d, %Y') }}</td>
+                                <td><i class="fas fa-rupee-sign text-secondary me-1"></i> {{ job_app.job.wage }}/day</td>
+                                <td>
+                                    <span class="badge bg-success rounded-pill">
+                                        Confirmed
+                                    </span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    {% if job_app.job.status == 'completed' %}
+                                        {% if current_user.user_type == 'employer' and not job_app.rating %}
+                                        <a href="#" class="btn btn-sm btn-warning rounded-pill btn-rating" data-application-id="{{ job_app.id }}">
+                                            <i class="fas fa-star me-1"></i> Rate Worker
+                                        </a>
+                                        {% elif current_user.user_type == 'employer' and job_app.rating %}
+                                        <span class="badge bg-success rounded-pill">
+                                            <i class="fas fa-star me-1"></i> Rated: {{ job_app.rating.rating }}/5
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-success rounded-pill">Completed</span>
+                                        {% endif %}
+                                    {% elif job_app.job.work_date <= today %}
+                                    <form action="{{ url_for('mark_job_completed', application_id=job_app.id) }}" method="POST" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-success rounded-pill">
+                                            <i class="fas fa-check-circle me-1"></i> Mark Completed
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <a href="{{ url_for('chat', room_id=job_app.job.chat_rooms[0].id if job_app.job.chat_rooms else '#') }}" class="btn btn-sm btn-info rounded-pill {% if not job_app.job.chat_rooms %}disabled{% endif %}">
+                                        <i class="fas fa-comments me-1"></i> Contact Employer
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4076/4076445.png" alt="No upcoming jobs" class="img-fluid mb-3" style="max-height: 100px; opacity: 0.5;">
+                    <p class="text-muted mb-0">You don't have any confirmed upcoming jobs.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Applications and Available Jobs row -->
+    <div class="row">
+    <!-- Worker's Job Applications Section -->
+    <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header py-3">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                            <i class="fas fa-file-alt text-white"></i>
+                        </div>
+                        <h5 class="mb-0 fw-bold">Your Job Applications</h5>
+                    </div>
+            </div>
+                <div class="card-body p-0">
+                {% set worker_applications = applications|selectattr('initiated_by', 'equalto', 'worker')|list %}
+                {% if worker_applications %}
+                    <div class="list-group list-group-flush">
+                    {% for application in worker_applications %}
+                        <div class="list-group-item p-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold">{{ application.job.title }}</h6>
+                                <span class="badge {% if application.status == 'accepted' %}bg-success{% elif application.status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %} ms-auto rounded-pill">
+                                {{ application.status }}
+                            </span>
+                            </div>
+                            <div class="d-flex mb-2 text-muted small">
+                                <div class="me-3">
+                                    <i class="fas fa-map-marker-alt me-1"></i> {{ application.job.location }}
+                                </div>
+                                <div>
+                                    <i class="fas fa-rupee-sign me-1"></i> {{ application.job.wage }}/day
+                                </div>
+                            </div>
+                            <div class="d-flex text-muted small">
+                                <div class="me-3">
+                                    <i class="fas fa-calendar-alt me-1"></i> Work: {{ application.job.work_date.strftime('%b %d, %Y') }}
+                                </div>
+                                <div>
+                                    <i class="fas fa-clock me-1"></i> Applied: {{ application.created_at.strftime('%b %d, %Y') }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="p-4 text-center">
+                        <img src="https://cdn-icons-png.flaticon.com/512/6598/6598519.png" alt="No applications" class="img-fluid mb-3" style="max-height: 100px; opacity: 0.5;">
+                        <p class="text-muted mb-0">You haven't applied to any jobs yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header py-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-success d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                <i class="fas fa-briefcase text-white"></i>
+                            </div>
+                            <h5 class="mb-0 fw-bold">Available Jobs</h5>
+                        </div>
+                        <a href="{{ url_for('chat_list') }}" class="btn btn-sm btn-outline-primary rounded-pill">
+                            <i class="fas fa-comments me-1"></i> Messages
+                            {% set unread_count = current_user.received_messages|selectattr('read', 'equalto', false)|list|length %}
+                            {% if unread_count > 0 %}
+                                <span class="badge bg-danger rounded-pill ms-1">{{ unread_count }}</span>
+                            {% endif %}
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                {% if jobs %}
+                    <div class="list-group list-group-flush">
+                    {% for job in jobs %}
+                        <div class="list-group-item p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold">{{ job.title }}</h6>
+                            </div>
+                            <p class="mb-2 small">{{ job.description[:100] }}{% if job.description|length > 100 %}...{% endif %}</p>
+                            <div class="d-flex flex-wrap justify-content-between align-items-center">
+                                <div class="d-flex text-muted small">
+                                    <div class="me-3">
+                                        <i class="fas fa-map-marker-alt me-1"></i> {{ job.location }}
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-rupee-sign me-1"></i> {{ job.wage }}/day
+                                    </div>
+                                </div>
+                                {% if job.id in applied_jobs %}
+                                <button class="btn btn-sm btn-secondary rounded-pill" disabled>
+                                    <i class="fas fa-check me-1"></i> Applied
+                                </button>
+                                {% else %}
+                                <form action="{{ url_for('apply_for_job', job_id=job.id) }}" method="POST">
+                                    <button type="submit" class="btn btn-sm btn-primary rounded-pill">
+                                        <i class="fas fa-paper-plane me-1"></i> Apply Now
+                                    </button>
+                        </form>
+                                {% endif %}
+                            </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                    <div class="p-4 text-center">
+                        <img src="https://cdn-icons-png.flaticon.com/512/4076/4076445.png" alt="No jobs" class="img-fluid mb-3" style="max-height: 100px; opacity: 0.5;">
+                        <p class="text-muted mb-0">No jobs available at this time.</p>
+                        <a href="{{ url_for('job_listings') }}" class="btn btn-sm btn-primary mt-3 rounded-pill">
+                            <i class="fas fa-search me-1"></i> Browse All Jobs
+                        </a>
+                    </div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">SMS Notifications</h5>
+    </div>
+    <div class="card-body">
+        {% if current_user.sms_notifications %}
+            <p class="text-success">✓ SMS notifications are enabled for your account</p>
+            <p class="text-muted">You will receive SMS notifications about new jobs and updates since you don't have smartphone access.</p>
+            <p class="text-muted">SMS notifications will be sent automatically when relevant events occur.</p>
+        {% else %}
+            <p class="text-muted">SMS notifications are not enabled for your account.</p>
+            <p class="text-muted">To enable SMS notifications, please update your profile settings.</p>
+        {% endif %}
+    </div>
+</div>
+    {% else %}
+<!-- Employer Dashboard -->
+<div class="row">
+    <!-- Quick Actions -->
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header py-3">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas fa-bolt text-white"></i>
+                    </div>
+                    <h5 class="mb-0 fw-bold">Quick Actions</h5>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{{ url_for('post_job') }}" class="text-decoration-none">
+                            <div class="card border-0 h-100 bg-light">
+                                <div class="card-body text-center p-4">
+                                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                                        <i class="fas fa-plus fa-lg text-white"></i>
+                                    </div>
+                                    <h6 class="fw-bold">Post Job</h6>
+                                    <p class="text-muted small mb-0">Create a new job listing</p>
+                                </div>
+                            </div>
+                            </a>
+                        </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('search_workers') }}" class="text-decoration-none">
+                            <div class="card border-0 h-100 bg-light">
+                                <div class="card-body text-center p-4">
+                                    <div class="rounded-circle bg-warning d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                                        <i class="fas fa-search fa-lg text-white"></i>
+                                    </div>
+                                    <h6 class="fw-bold">Find Workers</h6>
+                                    <p class="text-muted small mb-0">Search for available workers</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        {% if is_premium %}
+                        <a href="{{ url_for('ai_hub') }}" class="text-decoration-none">
+                        {% else %}
+                        <a href="{{ url_for('premium_subscription') }}" class="text-decoration-none">
+                        {% endif %}
+                            <div class="premium-ai-card position-relative overflow-hidden h-100">
+                                <style>
+                                    .premium-ai-card {
+                                        border-radius: var(--border-radius);
+                                        background: linear-gradient(120deg, rgba(67, 56, 202, 0.05), rgba(124, 58, 237, 0.1));
+                                        box-shadow: 0 8px 24px rgba(67, 56, 202, 0.15);
+                                        transition: all 0.4s ease;
+                                        overflow: hidden;
+                                        position: relative;
+                                        border: none;
+                                    }
+                                    
+                                    .premium-ai-card:hover {
+                                        transform: translateY(-10px);
+                                        box-shadow: 0 15px 35px rgba(67, 56, 202, 0.25);
+                                    }
+                                    
+                                    .premium-ai-card::before {
+                                        content: '';
+                                        position: absolute;
+                                        top: -2px;
+                                        left: -2px;
+                                        right: -2px;
+                                        bottom: -2px;
+                                        background: linear-gradient(45deg,
+                                            #4338ca, #7e22ce, #ec4899,
+                                            #7e22ce, #4338ca, #7e22ce,
+                                            #ec4899, #7e22ce, #4338ca);
+                                        background-size: 400%;
+                                        z-index: -1;
+                                        border-radius: calc(var(--border-radius) + 2px);
+                                        animation: glowing-border 8s linear infinite;
+                                    }
+                                    
+                                    @keyframes glowing-border {
+                                        0% { background-position: 0 0; }
+                                        50% { background-position: 400% 0; }
+                                        100% { background-position: 0 0; }
+                                    }
+                                    
+                                    .premium-ai-card .card-body {
+                                        background: #ffffff;
+                                        border-radius: calc(var(--border-radius) - 2px);
+                                        z-index: 1;
+                                        position: relative;
+                                    }
+                                    
+                                    .premium-ai-icon {
+                                        background: linear-gradient(120deg, #4338ca, #7e22ce);
+                                        position: relative;
+                                    }
+                                    
+                                    .pulse-ring {
+                                        position: absolute;
+                                        width: 100%;
+                                        height: 100%;
+                                        border-radius: 50%;
+                                        animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+                                        opacity: 0.5;
+                                    }
+                                    
+                                    @keyframes pulse-ring {
+                                        0% {
+                                            transform: scale(0.8);
+                                        }
+                                        50% {
+                                            transform: scale(1.2);
+                                        }
+                                        100% {
+                                            transform: scale(0.8);
+                                        }
+                                    }
+                                    
+                                    .premium-badge {
+                                        position: absolute;
+                                        top: 10px;
+                                        right: 10px;
+                                        background: linear-gradient(120deg, #7e22ce, #ec4899);
+                                        color: white;
+                                        border-radius: 50px;
+                                        font-size: 0.65rem;
+                                        font-weight: 600;
+                                        padding: 0.25rem 0.75rem;
+                                    }
+
+                                    .premium-lock-overlay {
+                                        position: absolute;
+                                        top: 0;
+                                        left: 0;
+                                        right: 0;
+                                        bottom: 0;
+                                        background: rgba(255, 255, 255, 0.9);
+                                        display: flex;
+                                        flex-direction: column;
+                                        align-items: center;
+                                        justify-content: center;
+                                        z-index: 2;
+                                        border-radius: var(--border-radius);
+                                    }
+                                </style>
+                                <div class="card-body text-center p-4">
+                                    <span class="premium-badge">PREMIUM</span>
+                                    <div class="premium-ai-icon rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                                        <div class="pulse-ring premium-ai-icon"></div>
+                                        <i class="fas fa-brain fa-lg text-white"></i>
+                                    </div>
+                                    <h6 class="fw-bold">AI Hub</h6>
+                                    <p class="text-muted small mb-0">Analytics & Recruiting Assistant</p>
+                                    
+                                    {% if not is_premium %}
+                                    <div class="premium-lock-overlay">
+                                        <i class="fas fa-lock fa-2x text-warning mb-2"></i>
+                                        <h6 class="fw-bold">Premium Feature</h6>
+                                        <p class="text-muted small mb-2">Upgrade to access AI features</p>
+                                        <button class="btn btn-sm btn-warning">
+                                            <i class="fas fa-crown me-1"></i> Upgrade Now
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('chat_list') }}" class="text-decoration-none">
+                            <div class="card border-0 h-100 bg-light">
+                                <div class="card-body text-center p-4">
+                                    <div class="rounded-circle bg-success d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                                        <i class="fas fa-comments fa-lg text-white"></i>
+                                    </div>
+                                    <h6 class="fw-bold">Messages</h6>
+                                    <p class="text-muted small mb-0">Chat with job applicants</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Worker Invitations Section -->
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header py-3">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-info d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas fa-paper-plane text-white"></i>
+                    </div>
+                    <h5 class="mb-0 fw-bold">Sent Worker Invitations</h5>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% set sent_invitations = [] %}
+                {% for app in applications %}
+                    {% if app.initiated_by == 'employer' %}
+                        {% set sent_invitations = sent_invitations + [app] %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if sent_invitations %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Job Title</th>
+                                <th>Worker</th>
+                                <th>Invited On</th>
+                                <th>Work Date</th>
+                                <th>Worker Response</th>
+                                <th class="pe-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invitation in sent_invitations %}
+                            <tr>
+                                <td class="ps-4">{{ invitation.job.title }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if invitation.applicant.profile_pic %}
+                                            <img src="{{ invitation.applicant.profile_pic }}" 
+                                                 alt="{{ invitation.applicant.name }}" 
+                                                 class="rounded-circle me-2"
+                                                 style="width: 40px; height: 40px; object-fit: cover;">
+                                        {% else %}
+                                            <div class="rounded-circle me-2 d-flex align-items-center justify-content-center text-white bg-secondary"
+                                                 style="width: 40px; height: 40px;">
+                                                {{ invitation.applicant.name[0] }}
+                                            </div>
+                                        {% endif %}
+                                        <div>
+                                            {{ invitation.applicant.name }}
+                                            <div class="text-muted small">
+                                                Rating: {{ "%.1f"|format(invitation.applicant.avg_rating or 0) }}/5.0
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><i class="fas fa-calendar-alt text-secondary me-1"></i> {{ invitation.created_at.strftime('%b %d, %Y') }}</td>
+                                <td><i class="fas fa-calendar-check text-secondary me-1"></i> {{ invitation.job.work_date.strftime('%b %d, %Y') }}</td>
+                                <td>
+                                    {% if invitation.worker_approved %}
+                                        <span class="badge bg-success rounded-pill">Accepted</span>
+                                    {% elif invitation.status == 'rejected' %}
+                                        <span class="badge bg-danger rounded-pill">Rejected</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark rounded-pill">Pending response</span>
+                                    {% endif %}
+                                </td>
+                                <td class="pe-4">
+                                    <span class="badge {% if invitation.status == 'pending' %}bg-warning
+                                                      {% elif invitation.status == 'accepted' %}bg-success
+                                                      {% else %}bg-danger{% endif %} rounded-pill">
+                                        {{ invitation.status|title }}
+                                    </span>
+                                    {% if invitation.chat_room %}
+                                        <a href="{{ url_for('chat', room_id=invitation.chat_room.id) }}" 
+                                           class="btn btn-info btn-sm ms-1">
+                                            <i class="fas fa-comments"></i> Chat
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4076/4076503.png" alt="No invitations" class="img-fluid mb-3" style="max-height: 100px; opacity: 0.5;">
+                    <p class="text-muted mb-0">You haven't sent any worker invitations yet.</p>
+                    <a href="{{ url_for('search_workers') }}" class="btn btn-sm btn-primary mt-3 rounded-pill">
+                        <i class="fas fa-search me-1"></i> Find Workers
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Posted Jobs Section -->
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header py-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                            <i class="fas fa-briefcase text-white"></i>
+                        </div>
+                        <h5 class="mb-0 fw-bold">Your Posted Jobs</h5>
+                    </div>
+                    <a href="{{ url_for('post_job') }}" class="btn btn-sm btn-primary rounded-pill">
+                        <i class="fas fa-plus me-1"></i> Post New Job
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if posted_jobs %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Title</th>
+                                <th>Location</th>
+                                <th>Wage</th>
+                                <th>Work Date</th>
+                                <th>Status</th>
+                                <th>Applications</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job in posted_jobs %}
+                            <tr>
+                                <td class="ps-4">{{ job.title }}</td>
+                                <td><i class="fas fa-map-marker-alt text-secondary me-1"></i> {{ job.location }}</td>
+                                <td><i class="fas fa-rupee-sign text-secondary me-1"></i> {{ job.wage }}/day</td>
+                                <td><i class="fas fa-calendar-alt text-secondary me-1"></i> {{ job.work_date.strftime('%b %d, %Y') }}</td>
+                                <td>
+                                    <span class="badge {% if job.status == 'open' %}bg-success
+                                                      {% elif job.status == 'filled' %}bg-info
+                                                      {% elif job.status == 'completed' %}bg-secondary
+                                                      {% else %}bg-danger{% endif %} rounded-pill">
+                                        {{ job.status|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('job_applications', job_id=job.id) }}" class="btn btn-sm btn-outline-primary">
+                                        {{ job.applications|length }} Applications
+                                    </a>
+                                </td>
+                                <td class="text-end pe-4">
+                                    {% if job.status == 'open' %}
+                                    <form action="{{ url_for('delete_job', job_id=job.id) }}" method="POST" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-danger rounded-pill" onclick="return confirm('Are you sure you want to delete this job?')">
+                                            <i class="fas fa-trash me-1"></i> Delete
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4076/4076445.png" alt="No jobs" class="img-fluid mb-3" style="max-height: 100px; opacity: 0.5;">
+                    <p class="text-muted mb-0">You haven't posted any jobs yet.</p>
+                    <a href="{{ url_for('post_job') }}" class="btn btn-sm btn-primary mt-3 rounded-pill">
+                        <i class="fas fa-plus me-1"></i> Post Your First Job
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Completed Jobs Section -->
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header py-3">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-success d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas fa-check-circle text-white"></i>
+                    </div>
+                    <h5 class="mb-0 fw-bold">Completed Jobs</h5>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% set completed_jobs = posted_jobs|selectattr('status', 'equalto', 'completed')|list %}
+                {% if completed_jobs %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Job Title</th>
+                                <th>Worker</th>
+                                <th>Work Date</th>
+                                <th>Wage</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job in completed_jobs %}
+                                {% for application in job.applications %}
+                                    {% if application.status == 'accepted' %}
+                                    <tr>
+                                        <td class="ps-4">{{ job.title }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if application.applicant.profile_pic %}
+                                                    <img src="{{ application.applicant.profile_pic }}" 
+                                                         alt="{{ application.applicant.name }}" 
+                                                         class="rounded-circle me-2"
+                                                         style="width: 40px; height: 40px; object-fit: cover;">
+                                                {% else %}
+                                                    <div class="rounded-circle me-2 d-flex align-items-center justify-content-center text-white bg-secondary"
+                                                         style="width: 40px; height: 40px;">
+                                                        {{ application.applicant.name[0] }}
+                                                    </div>
+                                                {% endif %}
+                                                <div>
+                                                    {{ application.applicant.name }}
+                                                    <div class="text-muted small">
+                                                        Rating: {{ "%.1f"|format(application.applicant.avg_rating or 0) }}/5.0
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><i class="fas fa-calendar-check text-secondary me-1"></i> {{ job.work_date.strftime('%b %d, %Y') }}</td>
+                                        <td><i class="fas fa-rupee-sign text-secondary me-1"></i> {{ job.wage }}/day</td>
+                                        <td>
+                                            {% if application.rating %}
+                                                <span class="badge bg-success rounded-pill">
+                                                    <i class="fas fa-star me-1"></i> Rated: {{ application.rating.rating }}/5
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark rounded-pill">
+                                                    <i class="fas fa-star me-1"></i> Pending Rating
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            {% if not application.rating %}
+                                            <a href="#" class="btn btn-sm btn-warning rounded-pill btn-rating" data-application-id="{{ application.id }}">
+                                                <i class="fas fa-star me-1"></i> Rate Worker
+                                            </a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4076/4076445.png" alt="No completed jobs" class="img-fluid mb-3" style="max-height: 100px; opacity: 0.5;">
+                    <p class="text-muted mb-0">No completed jobs yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header py-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-success d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                            <i class="fas fa-users text-white"></i>
+                        </div>
+                        <h5 class="mb-0 fw-bold">Recent Applications</h5>
+                    </div>
+                    <a href="{{ url_for('chat_list') }}" class="btn btn-sm btn-outline-primary rounded-pill">
+                        <i class="fas fa-comments me-1"></i> Messages
+                        {% set unread_count = current_user.received_messages|selectattr('read', 'equalto', false)|list|length %}
+                        {% if unread_count > 0 %}
+                            <span class="badge bg-danger rounded-pill ms-1">{{ unread_count }}</span>
+                        {% endif %}
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% set worker_applications = [] %}
+                {% for app in applications %}
+                    {% if app.initiated_by == 'worker' %}
+                        {% set worker_applications = worker_applications + [app] %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if worker_applications %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Job Title</th>
+                                <th>Applicant</th>
+                                <th>Applied On</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for application in worker_applications %}
+                            <tr>
+                                <td class="ps-4 fw-medium">{{ application.job.title }}</td>
+                                <td>{{ application.applicant.name }}</td>
+                                <td><i class="fas fa-calendar-alt text-secondary me-1"></i> {{ application.created_at.strftime('%b %d, %Y') }}</td>
+                                <td>
+                                    <span class="badge {% if application.status == 'accepted' %}bg-success{% elif application.status == 'rejected' %}bg-danger{% else %}bg-warning text-dark{% endif %} rounded-pill">
+                                        {{ application.status }}
+                                    </span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="btn-group">
+                                    <form action="{{ url_for('update_application_status', application_id=application.id) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="action" value="approve">
+                                            <button type="submit" class="btn btn-sm btn-success rounded-0 rounded-start" {% if application.status != 'pending' %}disabled{% endif %}>
+                                                <i class="fas fa-check me-1"></i> Accept
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('update_application_status', application_id=application.id) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="action" value="reject">
+                                            <button type="submit" class="btn btn-sm btn-danger rounded-0 rounded-end" {% if application.status != 'pending' %}disabled{% endif %}>
+                                                <i class="fas fa-times me-1"></i> Reject
+                                        </button>
+                                    </form>
+                                    </div>
+                                    
+                                    <!-- Add chat button -->
+                                    {% set chat_room = application.applicant.chat_rooms_2|selectattr("job_id", "equalto", application.job.id)|first %}
+                                    {% if chat_room %}
+                                    <a href="{{ url_for('chat', room_id=chat_room.id) }}" class="btn btn-sm btn-info ms-2">
+                                        <i class="fas fa-comments"></i> Chat
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center">
+                    <img src="https://cdn-icons-png.flaticon.com/512/6598/6598519.png" alt="No applications" class="img-fluid mb-3" style="max-height: 100px; opacity: 0.5;">
+                    <p class="text-muted mb-0">No worker applications received yet.</p>
+                    <p class="text-muted small">Post a job to receive applications from workers.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set up variables from Jinja context
+const showProfileReminder = ({% if show_profile_reminder is defined %}{{ show_profile_reminder|tojson }}{% else %}false{% endif %});
+const profileDismissUrl = '{{ url_for("profile", dismiss="true") }}';
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Show the profile reminder modal when the page loads
+    const profileReminderModal = document.getElementById('profileReminderModal');
+    if (profileReminderModal && showProfileReminder) {
+        try {
+            const profileModal = new bootstrap.Modal(profileReminderModal);
+            profileModal.show();
+            // Handle the "Remind Me Later" button click
+            const remindLaterBtn = profileReminderModal.querySelector('.btn-outline-secondary');
+            if (remindLaterBtn) {
+                remindLaterBtn.addEventListener('click', function() {
+                    fetch(profileDismissUrl, {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    }).then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        profileModal.hide();
+                    }).catch(error => {
+                        console.error('Error dismissing profile reminder:', error);
+                    });
+                });
+            }
+        } catch (error) {
+            console.error('Error initializing profile modal:', error);
+        }
+    }
+    
+    // Initialize tooltips
+    try {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    } catch (error) {
+        console.error('Error initializing tooltips:', error);
+    }
+    
+    // Handle rating buttons
+    try {
+        document.querySelectorAll('.btn-rating').forEach(function(button) {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                var applicationId = this.dataset.applicationId;
+                var ratingModal = new bootstrap.Modal(document.getElementById('ratingModal-' + applicationId));
+                ratingModal.show();
+            });
+        });
+    } catch (error) {
+        console.error('Error setting up rating buttons:', error);
+    }
+});
+
+// Add rating modal template
+const ratingModalTemplate = `
+<div class="modal fade" id="ratingModal-APPLICATION_ID" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rate Worker</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('submit_rating') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="application_id" value="APPLICATION_ID">
+                    <div class="mb-3">
+                        <label class="form-label">Rating</label>
+                        <div class="rating-stars mb-2">
+                            {% for i in range(5, 0, -1) %}
+                            <input type="radio" name="rating" value="{{ i }}" id="star{{ i }}-APPLICATION_ID" required>
+                            <label for="star{{ i }}-APPLICATION_ID" class="star-label">
+                                <i class="fas fa-star"></i>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Comments (optional)</label>
+                        <textarea name="comments" class="form-control" rows="3" placeholder="Share your experience working with this worker..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Rating</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>`;
+
+// Handle rating buttons
+document.querySelectorAll('.btn-rating').forEach(function(button) {
+    const applicationId = button.dataset.applicationId;
+    
+    // Add rating modal to the document if it doesn't exist
+    if (!document.getElementById('ratingModal-' + applicationId)) {
+        const modalHtml = ratingModalTemplate.replace(/APPLICATION_ID/g, applicationId);
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+    
+    button.addEventListener('click', function(e) {
+        e.preventDefault();
+        const ratingModal = new bootstrap.Modal(document.getElementById('ratingModal-' + applicationId));
+        ratingModal.show();
+    });
+});
+
+// Add rating stars styling
+const style = document.createElement('style');
+style.textContent = `
+    .rating-stars {
+        display: flex;
+        flex-direction: row-reverse;
+        justify-content: flex-end;
+    }
+    .rating-stars input {
+        display: none;
+    }
+    .rating-stars label {
+        cursor: pointer;
+        padding: 5px;
+        color: #ddd;
+        font-size: 24px;
+        transition: color 0.2s;
+    }
+    .rating-stars input:checked ~ label,
+    .rating-stars label:hover,
+    .rating-stars label:hover ~ label {
+        color: #ffc107;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

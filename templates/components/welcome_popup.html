@@ -1,0 +1,18 @@
+<div id="welcomePopup" class="modal fade" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Welcome to QuickHire!</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>To help you get the most out of QuickHire and connect with potential {{ 'employers' if current_user.user_type == 'worker' else 'workers' }}, please take a moment to complete your profile.</p>
+                <p>A complete profile increases your chances of {{ 'finding work' if current_user.user_type == 'worker' else 'finding qualified workers' }}!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="remindLater()">Remind Me Later</button>
+                <a href="{{ url_for('profile') }}" class="btn btn-primary">Update Profile Now</a>
+            </div>
+        </div>
+    </div>
+</div> 

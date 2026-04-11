@@ -1,0 +1,546 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Enhanced{% endblock %}
+
+{% block styles %}
+<style>
+    /* General Styling */
+    .table th {
+        white-space: nowrap;
+        cursor: pointer; /* Indicate columns are sortable */
+        position: relative; /* For sorting icons */
+        user-select: none; /* Prevent text selection on click */
+    }
+    .table th::after { /* Placeholder for sorting icon */
+        content: '';
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+        margin-left: 5px;
+        opacity: 0.3;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512'%3E%3Cpath fill='currentColor' d='M41 288h238c21.4 0 32.1 25.9 17 41L177 448c-9.4 9.4-24.6 9.4-33.9 0L24 329c-15.1-15.1-4.4-41 17-41zm255-105L177 64c-9.4-9.4-24.6-9.4-33.9 0L24 183c-15.1 15.1-4.4 41 17 41h238c21.4 0 32.1-25.9 17-41z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: center center;
+        background-size: contain;
+    }
+    .table th.sort-asc::after {
+        opacity: 1;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512'%3E%3Cpath fill='currentColor' d='M279 224H41c-21.4 0-32.1-25.9-17-41L143 64c9.4-9.4 24.6-9.4 33.9 0l119 119c15.2 15.1 4.5 41-16.9 41z'/%3E%3C/svg%3E"); /* Up arrow */
+    }
+     .table th.sort-desc::after {
+        opacity: 1;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512'%3E%3Cpath fill='currentColor' d='M41 288h238c21.4 0 32.1 25.9 17 41L177 448c-9.4 9.4-24.6 9.4-33.9 0L24 329c-15.1-15.1-4.4-41 17-41z'/%3E%3C/svg%3E"); /* Down arrow */
+     }
+
+    .modal-body .user-details {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1rem;
+    }
+    .table img.rounded-circle, .table .badge {
+        vertical-align: middle;
+    }
+    /* Recently Joined Highlight */
+    .table tbody tr.recent-join {
+        background-color: #e6f7ff; /* Light blue background */
+    }
+    .table tbody tr.recent-join td:first-child {
+        position: relative;
+    }
+     /* Optional: Add a small dot or indicator */
+    .table tbody tr.recent-join td:first-child::before {
+        content: '★';
+        color: #0d6efd; /* Bootstrap primary blue */
+        font-size: 0.8em;
+        position: absolute;
+        left: 2px;
+        top: 50%;
+        transform: translateY(-50%);
+        /* Alternatively use a dot:
+        content: '●';
+        font-size: 1.2em;
+        line-height: 1;
+        */
+    }
+
+    /* Filter Controls Styling */
+    .filter-controls {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    }
+
+    /* Back to top button */
+    #backToTopBtn {
+        display: none;
+        position: fixed;
+        bottom: 20px;
+        right: 30px;
+        z-index: 99;
+        border: none;
+        outline: none;
+        background-color: #0d6efd;
+        color: white;
+        cursor: pointer;
+        padding: 10px 15px;
+        border-radius: 50%;
+        font-size: 18px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        transition: opacity 0.3s, visibility 0.3s;
+    }
+    #backToTopBtn:hover {
+        background-color: #0b5ed7;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{# --- Calculate Stats using Jinja filters before rendering --- #}
+{% set total_users = users|length %}
+{% set employers = users|selectattr('user_type', 'equalto', 'employer')|list %}
+{% set workers = users|selectattr('user_type', 'equalto', 'worker')|list %}
+{% set available_users = users|selectattr('status', 'equalto', 'available')|list|length %}
+{% set busy_users = users|selectattr('status', 'equalto', 'busy')|list|length %}
+{% set unavailable_users = users|selectattr('status', 'equalto', 'unavailable')|list|length %}
+{% set employer_count = employers|length %}
+{% set worker_count = workers|length %}
+{% set employer_perc = (employer_count / total_users * 100) if total_users > 0 else 0 %}
+{% set worker_perc = (worker_count / total_users * 100) if total_users > 0 else 0 %}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <h2><i class="fas fa-user-shield me-2"></i>Admin Dashboard</h2>
+        <a href="{{ url_for('admin.admin_logout') }}" class="btn btn-outline-danger"><i class="fas fa-sign-out-alt me-2"></i>Logout</a>
+    </div>
+
+    {# Flash Messages #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {# --- Enhanced Stats Section --- #}
+    <div class="row mb-3 g-3">
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Total Users</h5>
+                    <p class="card-text display-6 fw-bold">{{ total_users }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-user-tie fa-3x text-success mb-3"></i>
+                    <h5 class="card-title">Employers</h5>
+                    <p class="card-text display-6 fw-bold">{{ employer_count }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-hard-hat fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">Workers</h5>
+                    <p class="card-text display-6 fw-bold">{{ worker_count }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {# User Type Ratio Bar #}
+    <div class="mb-4">
+        <h6>User Type Distribution</h6>
+        <div class="progress" style="height: 20px;">
+            <div class="progress-bar bg-success" role="progressbar" style="width: {{ employer_perc }}%;" aria-valuenow="{{ employer_perc }}" aria-valuemin="0" aria-valuemax="100" title="Employers: {{ employer_perc|round(1) }}%">
+                 {{ employer_perc|round(1) }}% Emp
+            </div>
+            <div class="progress-bar bg-warning text-dark" role="progressbar" style="width: {{ worker_perc }}%;" aria-valuenow="{{ worker_perc }}" aria-valuemin="0" aria-valuemax="100" title="Workers: {{ worker_perc|round(1) }}%">
+                 {{ worker_perc|round(1) }}% Work
+            </div>
+        </div>
+    </div>
+     {# Status Counts #}
+     <div class="row mb-4 g-3 text-center">
+         <div class="col">
+             <span class="badge bg-success fs-6">Available: {{ available_users }}</span>
+         </div>
+         <div class="col">
+             <span class="badge bg-warning text-dark fs-6">Busy: {{ busy_users }}</span>
+         </div>
+         <div class="col">
+             <span class="badge bg-secondary fs-6">Unavailable: {{ unavailable_users }}</span>
+         </div>
+     </div>
+
+    {# --- User Management Table with Filters/Sorting --- #}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 px-4" style="background: linear-gradient(135deg,rgb(62, 44, 159) 0%,rgb(7, 4, 43) 100%); border-radius: 8px 8px 0 0;">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            
+                <!-- Title Section - Light text for contrast on purple gradient bg -->
+                <h5 class="mb-0 fw-bold" style="color: #ffffff; letter-spacing: 0.5px;">
+                    <i class="fas fa-user-shield me-2" style="color: #ffd166;"></i> <!-- Gold accent icon -->
+                    User Management
+                </h5>
+            
+                <!-- Filter Controls Section - Enhanced Appearance -->
+                <div class="d-flex align-items-center flex-wrap gap-3">
+            
+                    {# --- Search Input --- #}
+                    <div class="input-group input-group-sm flex-nowrap" style="width: auto; min-width: 200px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); border-radius: 25px; overflow: hidden;">
+                        <span class="input-group-text border-0" style="background-color: #f8f9fa;">
+                            <i class="fas fa-search" style="color: #8e44ad;"></i> <!-- Purple icon to match header -->
+                        </span>
+                        <input type="text" id="userSearchInput" class="form-control border-0" placeholder="Search users..." aria-label="Search users" style="background-color: #f8f9fa; padding-left: 0;">
+                    </div>
+            
+                    {# --- Type Filter Dropdown --- #}
+                    <select id="userTypeFilter" class="form-select form-select-sm" aria-label="Filter by type" style="width: auto; min-width: 130px; border-radius: 25px; border: none; box-shadow: 0 3px 6px rgba(0,0,0,0.1); padding-left: 15px; background-color: #f8f9fa;">
+                        <option value="" selected>All Types</option>
+                        <option value="employer">Employers</option>
+                        <option value="worker">Workers</option>
+                    </select>
+            
+                    {# --- Status Filter Dropdown --- #}
+                    <select id="userStatusFilter" class="form-select form-select-sm" aria-label="Filter by status" style="width: auto; min-width: 130px; border-radius: 25px; border: none; box-shadow: 0 3px 6px rgba(0,0,0,0.1); padding-left: 15px; background-color: #f8f9fa;">
+                        <option value="" selected>All Statuses</option>
+                        <option value="available">Available</option>
+                        <option value="busy">Busy</option>
+                        <option value="unavailable">Unavailable</option>
+                    </select>
+            
+                    {# --- Reset Button --- #}
+                    <button id="resetFiltersBtn" class="btn btn-sm" title="Reset Filters" aria-label="Reset Filters" style="background-color: #ffd166; color: #6a3093; border-radius: 25px; border: none; box-shadow: 0 3px 6px rgba(0,0,0,0.1); padding: 0.375rem 0.75rem; transition: all 0.2s ease;">
+                        <i class="fas fa-undo me-1"></i>Reset
+                    </button>
+            
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                {# --- Added data-sortable attribute to headers --- #}
+                <table class="table table-hover table-striped align-middle" id="usersTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th data-sortable="true" data-column="id">ID</th>
+                            <th data-sortable="true" data-column="name">Name</th>
+                            <th data-sortable="true" data-column="email">Email</th>
+                            <th>Phone</th> {# Not sorting phone for simplicity #}
+                            <th data-sortable="true" data-column="user_type">User Type</th>
+                            <th data-sortable="true" data-column="status">Status</th>
+                            <th data-sortable="true" data-column="created_at">Created At</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    {# --- Added tbody id for easier JS targeting --- #}
+                    <tbody id="usersTableBody">
+                        {% for user in users %}
+                        {# Add data attributes for filtering/sorting #}
+                        <tr data-user-type="{{ user.user_type }}" data-status="{{ user.status | default('unavailable', true) }}" data-created-at="{{ user.created_at.isoformat() }}">
+                            <td>{{ user.id }}</td>
+                            <td>
+                                {% if user.profile_pic %}
+                                <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}" class="rounded-circle me-2" width="30" height="30" alt="Profile" loading="lazy">
+                                {% else %}
+                                <i class="fas fa-user-circle fa-lg me-2 text-secondary" style="font-size: 30px; vertical-align: middle;"></i>
+                                {% endif %}
+                                {{ user.name }}
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.phone if user.phone else '-' }}</td>
+                            <td>
+                                {% if user.user_type == 'worker' %}
+                                <span class="badge bg-warning text-dark">Worker</span>
+                                {% elif user.user_type == 'employer' %}
+                                <span class="badge bg-success">Employer</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ user.user_type|capitalize }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set status_val = user.status | default('unavailable', true) %}
+                                {% if status_val == 'available' %}
+                                <span class="badge bg-success">Available</span>
+                                {% elif status_val == 'busy' %}
+                                <span class="badge bg-warning text-dark">Busy</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Unavailable</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteUserModal"
+                                        data-user-id="{{ user.id }}"
+                                        data-user-name="{{ user.name }}"
+                                        data-user-email="{{ user.email }}"
+                                        data-user-type="{{ user.user_type }}">
+                                    <i class="fas fa-trash-alt me-1"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">No users found matching filters.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+             <p id="visibleRowCount" class="text-muted small mt-2"></p>
+        </div>
+    </div>
+</div>
+
+{# --- Back To Top Button --- #}
+<button onclick="scrollToTop()" id="backToTopBtn" title="Go to top"><i class="fas fa-arrow-up"></i></button>
+
+{# Include the Delete Modal HTML from the previous response here #}
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteUserModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Confirm User Deletion</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you absolutely sure you want to permanently delete the following user?</p>
+                <div class="mb-3 user-details">
+                    <strong>ID:</strong> <span id="modalUserId" class="fw-bold"></span><br>
+                    <strong>Name:</strong> <span id="modalUserName" class="fw-bold"></span><br>
+                    <strong>Email:</strong> <span id="modalUserEmail"></span><br>
+                    <strong>Type:</strong> <span id="modalUserType" class="badge"></span>
+                </div>
+                <div class="alert alert-warning d-flex align-items-center" role="alert">
+                   <i class="fas fa-exclamation-circle flex-shrink-0 me-2"></i>
+                   <div>
+                       <strong>Warning:</strong> This action cannot be undone. All associated user data will be permanently lost.
+                   </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i>Cancel</button>
+                <form id="deleteUserForm" method="POST" action="" style="display: inline;">
+                    {# Optional CSRF Token #}
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt me-1"></i>Confirm Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const usersTable = document.getElementById('usersTable');
+    const tableBody = document.getElementById('usersTableBody');
+    const rows = Array.from(tableBody.querySelectorAll('tr')); // Static NodeList to Array
+    const searchInput = document.getElementById('userSearchInput');
+    const typeFilter = document.getElementById('userTypeFilter');
+    const statusFilter = document.getElementById('userStatusFilter');
+    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+    const visibleRowCountElement = document.getElementById('visibleRowCount');
+    const noUsersRow = tableBody.querySelector('td[colspan="8"]'); // Reference to the 'no users' row if it exists
+
+    const SEVEN_DAYS_AGO = new Date();
+    SEVEN_DAYS_AGO.setDate(SEVEN_DAYS_AGO.getDate() - 7);
+
+    // --- Highlight Recent Users ---
+    rows.forEach(row => {
+        const createdAtStr = row.dataset.createdAt;
+        if (createdAtStr) {
+            const createdAtDate = new Date(createdAtStr);
+            if (createdAtDate >= SEVEN_DAYS_AGO) {
+                row.classList.add('recent-join');
+                row.title = 'Joined recently!'; // Add a tooltip
+            }
+        }
+    });
+
+    // --- Combined Filtering Logic ---
+    function applyFiltersAndSearch() {
+        const searchText = searchInput.value.toLowerCase().trim();
+        const selectedType = typeFilter.value;
+        const selectedStatus = statusFilter.value;
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const userType = row.dataset.userType || '';
+            const userStatus = row.dataset.status || '';
+
+            // Check filters first
+            const typeMatch = !selectedType || userType === selectedType;
+            const statusMatch = !selectedStatus || userStatus === selectedStatus;
+
+            // Check search text if filters match
+            let searchMatch = true;
+            if (searchText) {
+                searchMatch = Array.from(row.cells).some(cell =>
+                    cell.textContent.toLowerCase().includes(searchText)
+                );
+            }
+
+            // Show row only if all conditions met
+            if (typeMatch && statusMatch && searchMatch) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+         // Update visible row count display
+        visibleRowCountElement.textContent = `Showing ${visibleCount} of ${rows.length} users.`;
+
+        // Show/Hide the 'no users found' message
+        if (noUsersRow) {
+             noUsersRow.parentElement.style.display = (visibleCount === 0) ? '' : 'none';
+         }
+    }
+
+    // --- Client-Side Table Sorting ---
+    let currentSort = { column: null, direction: 'asc' };
+
+    usersTable.querySelectorAll('thead th[data-sortable="true"]').forEach(header => {
+        header.addEventListener('click', () => {
+            const column = header.dataset.column;
+            const direction = (currentSort.column === column && currentSort.direction === 'asc') ? 'desc' : 'asc';
+
+            // Remove previous sort classes
+            usersTable.querySelectorAll('thead th').forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
+            // Add new sort class
+            header.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
+
+            currentSort = { column, direction };
+            sortTable(column, direction);
+        });
+    });
+
+    function sortTable(column, direction) {
+        const modifier = (direction === 'asc') ? 1 : -1;
+
+        const sortedRows = rows.sort((a, b) => {
+            let valA = getCellValue(a, column);
+            let valB = getCellValue(b, column);
+
+            // Basic type handling (improve as needed)
+            if (column === 'id' || !isNaN(valA) && !isNaN(valB)) { // Numeric sort
+                 valA = parseFloat(valA);
+                 valB = parseFloat(valB);
+            } else if (column === 'created_at') { // Date sort
+                 valA = new Date(a.dataset.createdAt || 0);
+                 valB = new Date(b.dataset.createdAt || 0);
+            } else { // String sort (case-insensitive)
+                 valA = valA.toLowerCase();
+                 valB = valB.toLowerCase();
+            }
+
+
+            if (valA < valB) return -1 * modifier;
+            if (valA > valB) return 1 * modifier;
+            return 0;
+        });
+
+        // Re-append rows in sorted order
+        tableBody.innerHTML = ''; // Clear existing rows (careful with event listeners if added directly to rows)
+        sortedRows.forEach(row => tableBody.appendChild(row));
+        applyFiltersAndSearch(); // Re-apply filters after sorting
+    }
+
+    function getCellValue(row, column) {
+         // Get value based on column name - more robust than index
+        switch(column) {
+            case 'id': return row.cells[0].textContent;
+            case 'name': return row.cells[1].textContent.trim(); // Trim whitespace
+            case 'email': return row.cells[2].textContent;
+            case 'user_type': return row.dataset.userType;
+            case 'status': return row.dataset.status;
+            case 'created_at': return row.dataset.createdAt;
+            default: return '';
+        }
+    }
+
+
+    // --- Event Listeners for Filters/Search ---
+    searchInput.addEventListener('keyup', applyFiltersAndSearch);
+    typeFilter.addEventListener('change', applyFiltersAndSearch);
+    statusFilter.addEventListener('change', applyFiltersAndSearch);
+    resetFiltersBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        typeFilter.value = '';
+        statusFilter.value = '';
+         // Reset sorting visual indicators
+        usersTable.querySelectorAll('thead th').forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
+        currentSort = { column: null, direction: 'asc' };
+        // Optional: Resort to default (e.g., by ID) or just redraw
+         sortTable('id', 'asc'); // Example: resort by ID asc
+        applyFiltersAndSearch();
+    });
+
+    // --- Bootstrap Modal Logic (Keep As Is from previous response) ---
+    const deleteUserModalElement = document.getElementById('deleteUserModal');
+     if (deleteUserModalElement) {
+         const modalUserId = deleteUserModalElement.querySelector('#modalUserId');
+         const modalUserName = deleteUserModalElement.querySelector('#modalUserName');
+         const modalUserEmail = deleteUserModalElement.querySelector('#modalUserEmail');
+         const modalUserType = deleteUserModalElement.querySelector('#modalUserType');
+         const deleteUserForm = deleteUserModalElement.querySelector('#deleteUserForm');
+
+         deleteUserModalElement.addEventListener('show.bs.modal', function (event) {
+             const button = event.relatedTarget;
+             const userId = button.getAttribute('data-user-id');
+             const userName = button.getAttribute('data-user-name');
+             const userEmail = button.getAttribute('data-user-email');
+             const userType = button.getAttribute('data-user-type');
+
+             modalUserId.textContent = userId;
+             modalUserName.textContent = userName;
+             modalUserEmail.textContent = userEmail;
+             modalUserType.textContent = userType.charAt(0).toUpperCase() + userType.slice(1);
+             modalUserType.className = 'badge'; // Reset
+             if (userType === 'employer') modalUserType.classList.add('bg-success');
+             else if (userType === 'worker') modalUserType.classList.add('bg-warning', 'text-dark');
+             else modalUserType.classList.add('bg-secondary');
+
+             deleteUserForm.action = `{{ url_for('admin.delete_user', user_id=0) }}`.replace('/0', `/${userId}`);
+
+             const cancelButton = deleteUserModalElement.querySelector('[data-bs-dismiss="modal"]');
+             if (cancelButton) cancelButton.focus();
+         });
+     }
+
+    // --- Back to Top Button Logic ---
+    const backToTopButton = document.getElementById('backToTopBtn');
+    window.onscroll = function() { scrollFunction() };
+
+    function scrollFunction() {
+        if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+            backToTopButton.style.display = "block";
+        } else {
+            backToTopButton.style.display = "none";
+        }
+    }
+    // Add global function for the button's onclick
+    window.scrollToTop = function() {
+        document.body.scrollTop = 0; // For Safari
+        document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+    }
+
+    // Initial filter application on load & row count update
+    applyFiltersAndSearch();
+
+}); // End DOMContentLoaded
+</script>
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Premium Subscription{% endblock %}
+
+{% block head %}
+<!-- Preload UPI images to prevent delay -->
+<link rel="preload" as="image" href="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg">
+<link rel="preload" as="image" href="https://www.searchpng.com/wp-content/uploads/2019/01/BHIM-Logo-PNG-Image-715x715.png">
+{% endblock %}
+
+{% block content %}
+<style>
+    .premium-gradient {
+        background: linear-gradient(120deg, #4338ca, #7e22ce);
+    }
+    
+    .premium-text {
+        background: linear-gradient(120deg, #4338ca, #7e22ce);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .feature-check {
+        color: #4338ca;
+        margin-right: 0.75rem;
+    }
+    
+    .premium-card {
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(67, 56, 202, 0.1);
+        transition: all 0.4s ease;
+        border: none;
+        position: relative;
+    }
+    
+    .premium-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 40px rgba(67, 56, 202, 0.2);
+    }
+    
+    .premium-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: -1;
+        background: linear-gradient(120deg, rgba(67, 56, 202, 0.03), rgba(124, 58, 237, 0.03));
+    }
+    
+    .upi-form {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 2rem;
+        border-radius: var(--border-radius);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        background-color: white;
+    }
+    
+    .crown-icon {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .crown-glow {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 120%;
+        height: 120%;
+        background: radial-gradient(circle, rgba(255, 215, 0, 0.4) 0%, rgba(255, 215, 0, 0) 70%);
+        border-radius: 50%;
+        z-index: -1;
+    }
+    
+    .feature-item {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+    }
+    
+    .feature-item:last-child {
+        border-bottom: none;
+    }
+</style>
+
+<div class="container py-5">
+    <!-- Header -->
+    <div class="text-center mb-5">
+        <div class="crown-icon mb-4">
+            <div class="crown-glow"></div>
+            <i class="fas fa-crown fa-3x text-warning"></i>
+        </div>
+        <h1 class="fw-bold mb-2">Upgrade to <span class="premium-text">Premium</span></h1>
+        <p class="text-muted mb-0">Get access to exclusive AI-powered features to boost your hiring</p>
+    </div>
+
+    <div class="row">
+        <!-- Premium Features -->
+        <div class="col-lg-6 mb-4 mb-lg-0">
+            <div class="premium-card h-100">
+                <div class="card-header premium-gradient text-white p-4">
+                    <h3 class="fw-bold mb-0">Premium Benefits</h3>
+                </div>
+                <div class="card-body p-4">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle feature-check fa-lg"></i>
+                        <div>
+                            <h5 class="mb-1">AI-Powered Job Analytics</h5>
+                            <p class="text-muted mb-0">Get deep insights into your job performance and application trends</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle feature-check fa-lg"></i>
+                        <div>
+                            <h5 class="mb-1">AI Recruiting Assistant</h5>
+                            <p class="text-muted mb-0">Chat with our AI to find the perfect workers and get personalized advice</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle feature-check fa-lg"></i>
+                        <div>
+                            <h5 class="mb-1">Image Analysis</h5>
+                            <p class="text-muted mb-0">Upload images of work to find workers with matching skills</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle feature-check fa-lg"></i>
+                        <div>
+                            <h5 class="mb-1">Worker Recommendations</h5>
+                            <p class="text-muted mb-0">Get AI-powered recommendations for best-matched workers</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle feature-check fa-lg"></i>
+                        <div>
+                            <h5 class="mb-1">Premium Badge</h5>
+                            <p class="text-muted mb-0">Stand out with a premium badge on your profile</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Payment Form -->
+        <div class="col-lg-6">
+            <div class="upi-form">
+                <div class="text-center mb-4">
+                    <h3 class="fw-bold mb-2">Subscribe Now</h3>
+                    <p class="text-muted">Only ₹{{ subscription_fee }} per month</p>
+                </div>
+                
+                <form method="POST" action="{{ url_for('premium_subscription') }}">
+                    <div class="mb-4">
+                        <label for="upi_id" class="form-label">Enter UPI ID</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-money-bill-wave"></i></span>
+                            <input type="text" class="form-control" id="upi_id" name="upi_id" placeholder="your-upi-id@upi" required>
+                        </div>
+                        <div class="form-text">For demo purposes, enter any UPI ID. No real payment will be processed.</div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg premium-gradient">
+                            <i class="fas fa-crown me-2"></i> Pay ₹{{ subscription_fee }} & Upgrade
+                        </button>
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-lock me-1"></i> Secure payment processing
+                        </small>
+                    </div>
+                </form>
+                
+                <div class="text-center mt-4">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="UPI" style="height: 40px;" class="me-3">
+                    <img src="https://www.searchpng.com/wp-content/uploads/2019/01/BHIM-Logo-PNG-Image-715x715.png" alt="BHIM" style="height: 40px;">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Specific script for premium subscription page to ensure loading disappears quickly
+    document.addEventListener('DOMContentLoaded', function() {
+        // Force hide the loading animation immediately
+        const loadingElement = document.querySelector('.loading');
+        if (loadingElement) {
+            loadingElement.classList.add('hidden');
+            setTimeout(() => {
+                loadingElement.style.display = 'none';
+            }, 100);
+        }
+    });
+</script>
+{% endblock %} 

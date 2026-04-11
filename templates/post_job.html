@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Post a Job{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="text-center">Post a New Job</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('post_job') }}">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Job Title</label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Job Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="4" required></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="location" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="location" name="location" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="wage" class="form-label">Daily Wage (₹)</label>
+                            <input type="number" class="form-control" id="wage" name="wage" step="0.01" min="0" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="maximum_workers" class="form-label">Maximum Workers Needed</label>
+                            <input type="number" class="form-control" id="maximum_workers" name="maximum_workers" min="1" value="1" required>
+                            <small class="text-muted">The job will be marked as filled once this number of workers is reached.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="work_date" class="form-label">Date of Work</label>
+                            <input type="date" class="form-control" id="work_date" name="work_date" required>
+                            <small class="text-muted">The date when workers will need to show up for this job.</small>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary">Post Job</button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary ms-2">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

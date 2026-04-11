@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Invite {{ worker.name }} to {{ job.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Invite {{ worker.name }} to {{ job.title }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Job Details</h5>
+                        <p><strong>Date:</strong> {{ job.work_date.strftime('%B %d, %Y') }}</p>
+                        <p><strong>Time:</strong> {{ job.work_time.strftime('%I:%M %p') }}</p>
+                        <p><strong>Location:</strong> {{ job.location }}</p>
+                        <p><strong>Rate:</strong> ${{ "%.2f"|format(job.rate) }}/hour</p>
+                    </div>
+
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="message" class="form-label">Message (Optional)</label>
+                            <textarea class="form-control" id="message" name="message" rows="4" 
+                                    placeholder="Add a personal message to your invitation..."></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Send Invitation</button>
+                            <a href="{{ url_for('search_workers') }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

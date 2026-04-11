@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Job Listings{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Available Jobs</h2>
+    
+    <!-- Search Filters -->
+    <div class="card mb-4">
+            <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <input type="text" name="title" class="form-control" placeholder="Search by title" value="{{ request.args.get('title', '') }}">
+                    </div>
+                <div class="col-md-3">
+                    <input type="text" name="location" class="form-control" placeholder="Search by location" value="{{ request.args.get('location', '') }}">
+                    </div>
+                <div class="col-md-2">
+                    <input type="date" name="work_date" class="form-control" value="{{ request.args.get('work_date', '') }}">
+                    </div>
+                <div class="col-md-2">
+                    <input type="number" name="min_wage" class="form-control" placeholder="Min wage" value="{{ request.args.get('min_wage', '') }}">
+                    </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Search</button>
+                    </div>
+                </form>
+        </div>
+    </div>
+    
+    <!-- Job Listings -->
+    <div class="row">
+        {% for job in jobs %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ job.title }}</h5>
+                    {% if current_user.user_type == 'worker' %}
+                    <div class="d-flex gap-2">
+                        {% if job.chat_rooms %}
+                            {% for chat_room in job.chat_rooms %}
+                                {% if chat_room.user2_id == current_user.id %}
+                                    <a href="{{ url_for('chat', room_id=chat_room.id) }}" class="btn btn-info">Chat with Employer</a>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <p class="card-text">{{ job.description[:200] }}{% if job.description|length > 200 %}...{% endif %}</p>
+                    <ul class="list-unstyled">
+                        <li><strong>Location:</strong> {{ job.location }}</li>
+                        <li><strong>Wage:</strong> ₹{{ job.wage }}/hour</li>
+                        <li><strong>Date:</strong> {{ job.work_date.strftime('%Y-%m-%d') }}</li>
+                        <li><strong>Available Positions:</strong> {{ job.available_positions }}</li>
+                    </ul>
+                    
+                    {% if current_user.user_type == 'worker' %}
+                    <div class="d-flex justify-content-end mt-3">
+                        {% if job.id in applied_jobs %}
+                        <button class="btn btn-secondary" disabled>Already Applied</button>
+                        {% else %}
+                        <form action="{{ url_for('apply_for_job', job_id=job.id) }}" method="POST">
+                            <input type="hidden" name="message" value="I am interested in this job and would like to apply.">
+                            <button type="submit" class="btn btn-success">Apply Now</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                No jobs found matching your criteria.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}QuickHire{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Particles.js -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ range(1, 10000) | random }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Global styles */
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #818cf8;
+            --primary-dark: #3730a3;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text-color: #1f2937;
+            --text-muted: #6b7280;
+            --text-light: #9ca3af;
+            --border-color: #e5e7eb;
+            --bg-light: #f9fafb;
+            --card-bg: #ffffff;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --border-radius: 0.75rem;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: var(--text-color);
+            background-color: var(--bg-light);
+        }
+        
+        /* Profile page styles */
+        .profile-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--gray-100);
+        }
+        
+        .profile-cover {
+            background: linear-gradient(120deg, var(--primary), var(--primary-dark));
+            height: 180px;
+            position: relative;
+        }
+        
+        .profile-avatar-wrapper {
+            position: absolute;
+            bottom: -60px;
+            left: 2rem;
+            z-index: 10;
+        }
+        
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid white;
+            box-shadow: var(--shadow);
+            object-fit: cover;
+            background-color: white;
+        }
+        
+        .profile-status-badge {
+            position: absolute;
+            bottom: 10px;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .profile-main {
+            padding: 5rem 2rem 2rem;
+        }
+        
+        .user-name {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            color: var(--gray-900);
+        }
+        
+        .user-headline {
+            font-size: 1.1rem;
+            color: var(--gray-500);
+            margin-bottom: 1.5rem;
+        }
+        
+        .user-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem 2rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--gray-600);
+        }
+        
+        .meta-item i {
+            color: var(--primary);
+        }
+        
+        .meta-item-value {
+            font-weight: 500;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+        
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(79, 70, 229, 0.1);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            color: var(--gray-900);
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+            text-align: center;
+        }
+        
+        .section-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 1.5rem;
+        }
+        
+        .content-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: box-shadow 0.3s ease;
+        }
+        
+        .content-card:hover {
+            box-shadow: var(--shadow-md);
+        }
+        
+        .content-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--gray-50, #f9fafb);
+        }
+        
+        .content-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin: 0;
+            color: var(--gray-800);
+        }
+        
+        .content-body {
+            padding: 1.5rem;
+        }
+        
+        .skills-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        
+        .skill-badge {
+            background-color: rgba(79, 70, 229, 0.1);
+            color: var(--primary);
+            border-radius: 50px;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .skill-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .chart-wrapper {
+            width: 100%;
+            height: 250px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+        
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .status-update-form {
+            width: 100%;
+        }
+        
+        .status-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .status-option {
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            background-color: var(--card-bg);
+        }
+        
+        .status-option:hover {
+            border-color: var(--primary-light);
+            background-color: rgba(79, 70, 229, 0.05);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .status-option.active {
+            border-color: var(--primary);
+            background-color: rgba(79, 70, 229, 0.1);
+        }
+        
+        .status-option-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--success);
+        }
+        
+        .status-dot.warning {
+            background-color: var(--warning);
+        }
+        
+        .status-dot.danger {
+            background-color: var(--danger);
+        }
+        
+        .status-name {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+        
+        .status-desc {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+        }
+        
+        .status-indicator {
+            font-size: 0.75rem;
+            vertical-align: middle;
+        }
+        
+        /* Card styles for dashboard and other pages */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--gray-100);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .card-header {
+            background-color: var(--gray-50, #f9fafb);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 1.25rem;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .card-footer {
+            background-color: var(--gray-50, #f9fafb);
+            border-top: 1px solid var(--border-color);
+            padding: 1rem 1.25rem;
+        }
+        
+        /* Table styles */
+        .table {
+            color: var(--text-color);
+        }
+        
+        .table-light th {
+            background-color: var(--gray-50, #f9fafb);
+            color: var(--gray-700);
+            border-color: var(--border-color);
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: rgba(79, 70, 229, 0.05);
+        }
+        
+        /* Button improvements */
+        .btn {
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+        
+        .btn-outline {
+            color: var(--primary);
+            border-color: var(--border-color);
+            background-color: transparent;
+        }
+        
+        .btn-outline:hover {
+            background-color: rgba(79, 70, 229, 0.05);
+            border-color: var(--primary-light);
+            color: var(--primary);
+        }
+        
+        /* Form improvements */
+        .form-control, .form-select {
+            border-color: var(--border-color);
+            border-radius: 0.5rem;
+            padding: 0.625rem 1rem;
+            color: var(--text-color);
+            background-color: var(--card-bg);
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+        
+        .form-label {
+            color: var(--gray-700);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Navbar improvements */
+        .navbar-dark {
+            background-color: #1e1b4b !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .navbar-dark .navbar-brand {
+            color: white;
+            font-weight: 700;
+        }
+        
+        .navbar-dark .nav-link {
+            color: rgba(255, 255, 255, 0.8) !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            transition: color 0.2s ease;
+        }
+        
+        .navbar-dark .nav-link:hover {
+            color: white !important;
+        }
+        
+        /* Search results and worker cards */
+        .worker-card,
+        .job-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .worker-card:hover,
+        .job-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .section-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .status-selector {
+                grid-template-columns: 1fr;
+            }
+            
+            .profile-main {
+                padding: 5rem 1.25rem 1.25rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .profile-avatar {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .profile-avatar-wrapper {
+                bottom: -50px;
+                left: 1.25rem;
+            }
+            
+            .profile-main {
+                padding-top: 4rem;
+            }
+            
+            .user-meta {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Particles.js Container -->
+    <div id="particles-js"></div>
+
+    <!-- Loading Animation -->
+    <div class="loading"></div>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <!-- Link to dashboard if authenticated, otherwise to home -->
+            {% if current_user.is_authenticated %}
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="fas fa-bolt"></i> QuickHire
+            </a>
+            {% else %}
+            <a class="navbar-brand" href="{{ url_for('home') }}">
+                <i class="fas fa-bolt"></i> QuickHire
+            </a>
+            {% endif %}
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <!-- Search Bar - Only visible to employers -->
+                {% if not current_user.is_authenticated or current_user.user_type == 'employer' %}
+                <form class="d-flex mx-auto search-form" action="{{ url_for('search_workers') }}" method="GET">
+                    <div class="input-group">
+                        <span class="input-group-text border-end-0">
+                            <i class="fas fa-search search-icon"></i>
+                        </span>
+                        <input class="form-control border-start-0" type="search" name="skill" placeholder="Search workers by skill..." aria-label="Search">
+                        <select class="form-select" name="location" style="max-width: 150px;">
+                            <option value="">All Locations</option>
+                            <option value="mumbai">Mumbai</option>
+                            <option value="delhi">Delhi</option>
+                            <option value="bangalore">Bangalore</option>
+                            <option value="chennai">Chennai</option>
+                            <option value="pune">Pune</option>
+                        </select>
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </form>
+                {% elif current_user.is_authenticated and current_user.user_type == 'worker' %}
+                <!-- Job Search Bar - Only visible to workers -->
+                <form class="d-flex mx-auto search-form" action="{{ url_for('job_listings') }}" method="GET">
+                    <div class="input-group">
+                        <span class="input-group-text border-end-0">
+                            <i class="fas fa-search search-icon"></i>
+                        </span>
+                        <input class="form-control border-start-0" type="search" name="title" placeholder="Search jobs by title..." aria-label="Search">
+                        <select class="form-select" name="location" style="max-width: 150px;">
+                            <option value="">All Locations</option>
+                            <option value="mumbai">Mumbai</option>
+                            <option value="delhi">Delhi</option>
+                            <option value="bangalore">Bangalore</option>
+                            <option value="chennai">Chennai</option>
+                            <option value="pune">Pune</option>
+                        </select>
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i> Search Jobs
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+
+                <!-- Navigation Links -->
+                <ul class="navbar-nav ms-auto">
+                    <!-- Home link - only visible to non-authenticated users -->
+                    {% if not current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('home') }}">
+                            <i class="fas fa-home"></i> Home
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('profile') }}">
+                                <i class="fas fa-user-circle"></i> My Profile
+                            </a>
+                        </li>
+                        {% if current_user.user_type == 'worker' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('job_listings') }}">
+                                <i class="fas fa-briefcase"></i> Jobs
+                            </a>
+                        </li>
+                        {% endif %}
+                        <!-- Find Workers link is now only available to employers -->
+                        {% if current_user.user_type == 'employer' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('search_workers') }}">
+                                <i class="fas fa-search"></i> Find Workers
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('post_job') }}">
+                                <i class="fas fa-plus-circle"></i> Post Job
+                            </a>
+                        </li>
+                        {% endif %}
+                        <!-- Chat Button - Available to all authenticated users -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('chat_list') }}">
+                              <i class="fas fa-comments"></i> Chat
+                              {% set unread_count = current_user.received_messages
+                                   |selectattr('is_read','equalto',false)|list|length %}
+                              {% if unread_count > 0 %}
+                                <span id="chat-badge" class="badge bg-danger">{{ unread_count }}</span>
+                              {% else %}
+                                <span id="chat-badge" class="badge bg-danger d-none">0</span>
+                              {% endif %}
+                            </a>
+                          </li>
+                          
+                          
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login') }}">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('register') }}">
+                                <i class="fas fa-user-plus"></i> Register
+                            </a>
+                        </li>
+                    {% endif %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-globe"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+                            <li>
+                                <div id="google_translate_element" style="padding: 0 10px;"></div>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}?v={{ range(1, 10000) | random }}"></script>
+    
+    <!-- First-time login profile reminder popup -->
+    {% if current_user.is_authenticated and first_login and profile_incomplete %}
+    <div class="modal fade" id="firstLoginModal" tabindex="-1" aria-labelledby="firstLoginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0">
+                {% if current_user.user_type == 'worker' %}
+                <div class="modal-header" style="background: linear-gradient(120deg, #4f46e5, #7c3aed); color: white;">
+                    <h5 class="modal-title" id="firstLoginModalLabel">
+                        <i class="fas fa-hard-hat me-2"></i> Welcome, {{ current_user.name }}!
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center mb-4">
+                        <div class="mb-3" style="font-size: 3rem; color: #4f46e5;">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <h4>Complete Your Worker Profile</h4>
+                    </div>
+                    
+                    <p class="mb-3">A complete worker profile helps you get discovered and hired faster! You need to update:</p>
+                    
+                    <div class="mb-4">
+                        <ul class="list-group">
+                            {% if not current_user.skills %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-tools me-2 text-primary"></i> Add your skills</span>
+                                <span class="badge bg-danger rounded-pill">Missing</span>
+                            </li>
+                            {% endif %}
+                            {% if not current_user.bio %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-user-circle me-2 text-primary"></i> Write a short bio</span>
+                                <span class="badge bg-danger rounded-pill">Missing</span>
+                            </li>
+                            {% endif %}
+                            {% if not current_user.hourly_rate %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-rupee-sign me-2 text-primary"></i> Set your hourly rate</span>
+                                <span class="badge bg-danger rounded-pill">Missing</span>
+                            </li>
+                            {% endif %}
+                            {% if current_user.profile_pic == '/static/images/default-profile.svg' %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-camera me-2 text-primary"></i> Upload a profile picture</span>
+                                <span class="badge bg-warning rounded-pill">Recommended</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    
+                    <div class="alert alert-primary">
+                        <i class="fas fa-info-circle me-2"></i> Workers with complete profiles are <strong>3x more likely</strong> to be hired!
+                    </div>
+                    
+                    <p>Complete these details to increase your chances of finding great job opportunities!</p>
+                </div>
+                {% else %}
+                <div class="modal-header" style="background: linear-gradient(120deg, #0f766e, #047857); color: white;">
+                    <h5 class="modal-title" id="firstLoginModalLabel">
+                        <i class="fas fa-building me-2"></i> Welcome, {{ current_user.name }}!
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center mb-4">
+                        <div class="mb-3" style="font-size: 3rem; color: #047857;">
+                            <i class="fas fa-briefcase"></i>
+                        </div>
+                        <h4>Complete Your Employer Profile</h4>
+                    </div>
+                    
+                    <p class="mb-3">A complete employer profile helps you attract qualified workers! You need to update:</p>
+                    
+                    <div class="mb-4">
+                        <ul class="list-group">
+                            {% if not current_user.bio %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-building me-2 text-success"></i> Add company information</span>
+                                <span class="badge bg-danger rounded-pill">Missing</span>
+                            </li>
+                            {% endif %}
+                            {% if current_user.profile_pic == '/static/images/default-profile.svg' %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-camera me-2 text-success"></i> Upload a company logo</span>
+                                <span class="badge bg-warning rounded-pill">Recommended</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    
+                    <div class="alert alert-success">
+                        <i class="fas fa-info-circle me-2"></i> Employers with complete profiles receive <strong>2x more applications</strong> from qualified candidates!
+                    </div>
+                    
+                    <p>Complete your profile to build trust and attract more qualified workers to your jobs!</p>
+                </div>
+                {% endif %}
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" id="remindLaterBtn">
+                        <i class="fas fa-clock me-1"></i> Remind Me Later
+                    </button>
+                    <a href="{{ url_for('profile') }}" class="btn {% if current_user.user_type == 'worker' %}btn-primary{% else %}btn-success{% endif %}">
+                        <i class="fas fa-user-edit me-1"></i> Update Profile Now
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if reminder popup should be shown
+            const shouldShowReminder = {% if first_login and profile_incomplete %}true{% else %}false{% endif %};
+            
+            if (shouldShowReminder) {
+                // Make sure the modal element exists before initializing
+                const modalElement = document.getElementById('firstLoginModal');
+                if (!modalElement) {
+                    console.error('Modal element not found');
+                    return;
+                }
+
+                try {
+                    const firstLoginModal = new bootstrap.Modal(modalElement);
+                    firstLoginModal.show();
+                    
+                    // Handle the "Remind Me Later" button click
+                    const remindLaterBtn = document.getElementById('remindLaterBtn');
+                    if (remindLaterBtn) {
+                        remindLaterBtn.addEventListener('click', function() {
+                            // Set a cookie to remember we've dismissed the popup
+                            const thirtyMinutesFromNow = new Date(new Date().getTime() + 30 * 60 * 1000);
+                            document.cookie = "profile_reminder_dismissed=true; expires=" + thirtyMinutesFromNow.toUTCString() + "; path=/";
+                            
+                            // Make an AJAX request to update the server session
+                            fetch("{{ url_for('profile') }}?dismiss=true", {
+                                method: 'GET',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                credentials: 'same-origin'
+                            }).then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Network response was not ok');
+                                }
+                                console.log('Profile reminder dismissed for 30 minutes');
+                                firstLoginModal.hide();
+                                window.location.reload();
+                            }).catch(error => {
+                                console.error('Error dismissing profile reminder:', error);
+                                firstLoginModal.hide();
+                            });
+                        });
+                    }
+                    
+                    // Handle the close button and ESC key
+                    const closeBtn = modalElement.querySelector('.btn-close');
+                    if (closeBtn) {
+                        closeBtn.addEventListener('click', function() {
+                            fetch("{{ url_for('profile') }}?dismiss=true", { 
+                                method: 'GET',
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                                credentials: 'same-origin'
+                            }).catch(error => {
+                                console.error('Error dismissing profile reminder:', error);
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error initializing modal:', error);
+                }
+            }
+        });
+    </script>
+    {% endif %}
+    
+    <!-- Particles.js Configuration -->
+    <script>
+        // Remove loading animation when page is fully loaded
+        window.addEventListener('DOMContentLoaded', function() {
+            // Hide loading animation immediately on DOMContentLoaded
+            const loadingElement = document.querySelector('.loading');
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
+                setTimeout(() => {
+                    loadingElement.style.display = 'none';
+                }, 300);
+            }
+        });
+
+        // Backup to ensure loading is hidden if window.load takes too long
+        setTimeout(function() {
+            const loadingElement = document.querySelector('.loading');
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
+                setTimeout(() => {
+                    loadingElement.style.display = 'none';
+                }, 300);
+            }
+        }, 1000);
+
+        particlesJS('particles-js', {
+            particles: {
+                number: {
+                    value: 30,
+                    density: {
+                        enable: true,
+                        value_area: 1000
+                    }
+                },
+                color: {
+                    value: '#4f46e5'
+                },
+                shape: {
+                    type: 'circle'
+                },
+                opacity: {
+                    value: 0.2,
+                    random: false,
+                    animation: {
+                        enable: true,
+                        speed: 0.5,
+                        opacity_min: 0.1,
+                        sync: false
+                    }
+                },
+                size: {
+                    value: 4,
+                    random: true,
+                    animation: {
+                        enable: true,
+                        speed: 1,
+                        size_min: 0.1,
+                        sync: false
+                    }
+                },
+                line_linked: {
+                    enable: true,
+                    distance: 200,
+                    color: '#4f46e5',
+                    opacity: 0.2,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 1,
+                    direction: 'none',
+                    random: false,
+                    straight: false,
+                    out_mode: 'out',
+                    bounce: false,
+                    attract: {
+                        enable: true,
+                        rotateX: 600,
+                        rotateY: 1200
+                    }
+                }
+            },
+            interactivity: {
+                detect_on: 'canvas',
+                events: {
+                    onhover: {
+                        enable: true,
+                        mode: 'grab'
+                    },
+                    onclick: {
+                        enable: true,
+                        mode: 'push'
+                    },
+                    resize: true
+                },
+                modes: {
+                    grab: {
+                        distance: 140,
+                        line_linked: {
+                            opacity: 0.5
+                        }
+                    },
+                    push: {
+                        particles_nb: 2
+                    }
+                }
+            },
+            retina_detect: true
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+    <!-- Footer -->
+    <footer class="bg-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">© 2025 QuickHire. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-decoration-none text-muted me-3">Privacy Policy</a>
+                    <a href="#" class="text-decoration-none text-muted">Terms of Service</a>
+                </div>
+            </div>
+            <!-- Admin Link -->
+            <div class="row mt-3">
+                <div class="col-12 text-center">
+                    <a href="{{ url_for('admin.admin_login') }}" class="text-muted small">Admin Access</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+          new google.translate.TranslateElement({
+            pageLanguage: 'en',
+            includedLanguages: 'en,hi,ta,te,bn,ml,mr,gu,pa,ur', // Add or remove as needed
+            layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+          }, 'google_translate_element');
+        }
+      </script>
+      
+      <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+      
+<!-- Load Socket.IO -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🔔 Real‑time badge script loaded");
+
+  const chatBadge     = document.getElementById("chat-badge");
+  const currentUserId = {{ current_user.id }};
+  const chatRooms     = {{ chat_rooms|map(attribute='id')|list|tojson }};
+
+  let unreadCount = parseInt(chatBadge.textContent) || 0;
+
+  const socket = io(window.location.origin);
+
+  socket.on("connect", () => {
+    console.log("✅ Socket connected:", socket.id);
+
+    // **JOIN as strings** so they match the server's emit(room='1')  
+    chatRooms.forEach(roomId => {
+      const roomStr = roomId.toString();
+      console.log("➡️ Joining room:", roomStr);
+      socket.emit("join", { room: roomStr });
+    });
+  });
+
+  socket.on("message", data => {
+    console.log("📨 Received message event:", data);
+    const senderId   = parseInt(data.sender_id);
+    const receiverId = parseInt(data.receiver_id);
+
+    if (receiverId === currentUserId && senderId !== currentUserId) {
+      unreadCount++;
+      chatBadge.classList.remove("d-none");
+      chatBadge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+      console.log("🔢 Updated unreadCount:", unreadCount);
+    }
+  });
+
+  // Optional: clear when clicking “Chat”
+  const chatLink = document.querySelector('a[href="{{ url_for("chat_list") }}"]');
+  if (chatLink) {
+    chatLink.addEventListener("click", () => {
+      unreadCount = 0;
+      chatBadge.classList.add("d-none");
+      chatBadge.textContent = "0";
+      console.log("✖️ Badge cleared");
+    });
+  }
+});
+</script>
+
+
+</body>
+</html>

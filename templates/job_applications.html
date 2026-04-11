@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Job Applications{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Applications for: {{ job.title }}</h5>
+            <span class="badge bg-light text-dark">{{ applications|length }} application(s)</span>
+        </div>
+        <div class="card-body">
+            {% if applications %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Worker</th>
+                                <th>Applied On</th>
+                                <th>Message</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for application in applications %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if application.applicant.profile_pic %}
+                                            <img src="{{ application.applicant.profile_pic }}" 
+                                                 alt="{{ application.applicant.name }}" 
+                                                 class="rounded-circle me-2"
+                                                 style="width: 40px; height: 40px; object-fit: cover;">
+                                        {% else %}
+                                            <div class="rounded-circle me-2 d-flex align-items-center justify-content-center text-white bg-secondary"
+                                                 style="width: 40px; height: 40px;">
+                                                {{ application.applicant.name[0] }}
+                                            </div>
+                                        {% endif %}
+                                        <div>
+                                            <div>{{ application.applicant.name }}</div>
+                                            <small class="text-muted">
+                                                Rating: {{ "%.1f"|format(application.applicant.avg_rating or 0) }}/5.0
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ application.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if application.message %}
+                                        {{ application.message }}
+                                    {% else %}
+                                        <span class="text-muted">No message</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge {% if application.status == 'pending' %}bg-warning
+                                                      {% elif application.status == 'accepted' %}bg-success
+                                                      {% else %}bg-danger{% endif %}">
+                                        {{ application.status|title }}
+                                    </span>
+                                </td>
+                                <td class="text-nowrap">
+                                    <!-- Chat Button - Always visible -->
+                                    {% set chat_room = application.applicant.chat_rooms_2|selectattr("job_id", "equalto", job.id)|first %}
+                                    {% if chat_room %}
+                                        <a href="{{ url_for('chat', room_id=chat_room.id) }}" 
+                                           class="btn btn-info btn-sm me-1">
+                                            <i class="fas fa-comments"></i> Chat
+                                        </a>
+                                    {% endif %}
+
+                                    <!-- Accept/Reject Buttons - Only for worker-initiated pending applications -->
+                                    {% if application.status == 'pending' and application.initiated_by == 'worker' %}
+                                        <form action="{{ url_for('update_application_status', application_id=application.id) }}" 
+                                              method="POST" 
+                                              class="d-inline">
+                                            <input type="hidden" name="action" value="approve">
+                                            <button type="submit" class="btn btn-success btn-sm me-1">
+                                                <i class="fas fa-check"></i> Accept
+                                            </button>
+                                        </form>
+                                        <form action="{{ url_for('update_application_status', application_id=application.id) }}" 
+                                              method="POST" 
+                                              class="d-inline">
+                                            <input type="hidden" name="action" value="reject">
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="fas fa-times"></i> Reject
+                                            </button>
+                                        </form>
+                                    {% elif application.initiated_by == 'employer' %}
+                                        <span class="badge bg-info text-white">
+                                            <i class="fas fa-paper-plane me-1"></i> Invitation Sent
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    No applications received yet.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.table td {
+    vertical-align: middle;
+}
+
+.badge {
+    font-size: 0.9em;
+    padding: 0.5em 0.75em;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Show the active tab from URL hash if present
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlHash = window.location.hash;
+        if (urlHash) {
+            const tab = document.querySelector(`.nav-link[href="${urlHash}"]`);
+            if (tab) {
+                tab.click();
+            }
+        }
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,644 @@
+{% extends "base.html" %}
+
+{% block title %}AI Job Analytics{% endblock %}
+
+{% block content %}
+<style>
+    .premium-gradient {
+        background: linear-gradient(120deg, #4338ca, #7e22ce);
+    }
+    
+    .premium-gradient-text {
+        background: linear-gradient(120deg, #4338ca, #7e22ce);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .ai-badge {
+        background: linear-gradient(120deg, #7e22ce, #ec4899);
+        color: white;
+        font-weight: 600;
+        padding: 0.35em 0.75em;
+        border-radius: 9999px;
+        font-size: 0.75em;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35em;
+    }
+    
+    .insight-card {
+        border-radius: var(--border-radius);
+        border: 1px solid var(--border-color);
+        background-color: var(--card-bg, white);
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        overflow: hidden;
+        height: 100%;
+    }
+    
+    .insight-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .insight-card-header {
+        padding: 1.25rem;
+        background: linear-gradient(120deg, rgba(67, 56, 202, 0.05), rgba(236, 72, 153, 0.05));
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .insight-card-body {
+        padding: 1.5rem;
+    }
+    
+    .highlight-text {
+        font-weight: 600;
+        color: #4338ca;
+    }
+    
+    .recommendation-item {
+        padding: 0.75rem 1rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 0.75rem;
+        background-color: rgba(67, 56, 202, 0.05);
+        border-left: 3px solid #4338ca;
+    }
+    
+    .trend-up {
+        color: #22c55e;
+    }
+    
+    .trend-down {
+        color: #ef4444;
+    }
+    
+    .trend-neutral {
+        color: #f59e0b;
+    }
+    
+    .chart-container {
+        height: 300px;
+        width: 100%;
+        position: relative;
+    }
+    
+    .ai-thinking {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 2rem auto;
+        max-width: 300px;
+    }
+    
+    .ai-thinking-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: #7e22ce;
+        animation: ai-thinking 1.4s infinite ease-in-out both;
+    }
+    
+    .ai-thinking-dot:nth-child(1) {
+        animation-delay: -0.32s;
+    }
+    
+    .ai-thinking-dot:nth-child(2) {
+        animation-delay: -0.16s;
+    }
+    
+    @keyframes ai-thinking {
+        0%, 80%, 100% {
+            transform: scale(0);
+        }
+        40% {
+            transform: scale(1);
+        }
+    }
+    
+    .skill-badge {
+        background-color: rgba(79, 70, 229, 0.1);
+        color: #4f46e5;
+        border-radius: 50px;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        margin: 0.25rem;
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- Header Section -->
+    <div class="card mb-4">
+        <div class="card-body p-4 premium-gradient text-white">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2 class="fw-bold mb-1">
+                        <i class="fas fa-chart-line me-2"></i> AI-Powered Job Analytics
+                    </h2>
+                    <p class="mb-0">
+                        Get deep insights into your job postings and applications with our advanced AI analytics
+                    </p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <span class="ai-badge">
+                        <i class="fas fa-robot"></i> Powered by Gemini AI
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Basic Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center p-4">
+                    <div class="rounded-circle premium-gradient text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                        <i class="fas fa-briefcase fa-lg"></i>
+                    </div>
+                    <h2 class="fw-bold mb-0">{{ basic_stats.total_jobs }}</h2>
+                    <p class="text-muted mb-0">Total Job Postings</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center p-4">
+                    <div class="rounded-circle premium-gradient text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                        <i class="fas fa-user-tie fa-lg"></i>
+                    </div>
+                    <h2 class="fw-bold mb-0">{{ basic_stats.total_applications }}</h2>
+                    <p class="text-muted mb-0">Total Applications</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center p-4">
+                    <div class="rounded-circle premium-gradient text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                        <i class="fas fa-chart-bar fa-lg"></i>
+                    </div>
+                    <h2 class="fw-bold mb-0">{{ "%.1f"|format(basic_stats.application_per_job_avg) }}</h2>
+                    <p class="text-muted mb-0">Avg Applications per Job</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center p-4">
+                    <div class="rounded-circle premium-gradient text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                        <i class="fas fa-clock fa-lg"></i>
+                    </div>
+                    <h2 class="fw-bold mb-0">
+                        {% if basic_stats.applications_by_date|length > 0 %}
+                            {{ basic_stats.applications_by_date|length }}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </h2>
+                    <p class="text-muted mb-0">Days Active</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row mb-4">
+        <!-- Applications Trend Chart -->
+        <div class="col-md-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-chart-line me-2 text-primary"></i> Application Trends
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="applicationTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Skills -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-tools me-2 text-primary"></i> Top Skills
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if basic_stats.top_skills %}
+                        <div class="chart-container">
+                            <canvas id="skillsChart"></canvas>
+                        </div>
+                        <div class="d-flex flex-wrap mt-3">
+                            {% for skill, count in basic_stats.top_skills.items() %}
+                                <span class="skill-badge">
+                                    {{ skill }} ({{ count }})
+                                </span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center my-5">
+                            <i class="fas fa-tools fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No skills data available yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AI Insights Section -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card mb-4">
+                <div class="card-header premium-gradient text-white">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <h5 class="mb-0 fw-bold">AI-Powered Insights</h5>
+                        </div>
+                        <form action="{{ url_for('refresh_job_analytics') }}" method="POST">
+                            <button type="submit" class="btn btn-light btn-sm">
+                                <i class="fas fa-sync-alt me-1"></i> Re-run Analysis
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if basic_stats.total_applications == 0 %}
+                        <div class="text-center my-5">
+                            <div class="mb-4">
+                                <i class="fas fa-robot fa-3x text-muted"></i>
+                            </div>
+                            <h4 class="fw-bold">No Applications Yet</h4>
+                            <p class="text-muted">
+                                Start receiving applications to unlock AI-powered insights.
+                            </p>
+                            <a href="{{ url_for('post_job') }}" class="btn btn-primary rounded-pill">
+                                <i class="fas fa-plus me-2"></i> Post a New Job
+                            </a>
+                        </div>
+                    {% elif ai_analysis and 'error' in ai_analysis %}
+                        <div class="text-center my-5">
+                            <div class="mb-4">
+                                <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
+                            </div>
+                            <h4 class="fw-bold">AI Analysis Unavailable</h4>
+                            <p class="text-muted">
+                                {{ ai_analysis.error }}
+                            </p>
+                            <form action="{{ url_for('refresh_job_analytics') }}" method="POST">
+                                <button type="submit" class="btn btn-primary rounded-pill">
+                                    <i class="fas fa-sync-alt me-2"></i> Re-run Analysis
+                                </button>
+                            </form>
+                        </div>
+                    {% elif not ai_analysis %}
+                        <div class="ai-thinking">
+                            <div class="ai-thinking-dot"></div>
+                            <div class="ai-thinking-dot"></div>
+                            <div class="ai-thinking-dot"></div>
+                        </div>
+                        <p class="text-center text-muted">AI is analyzing your data...</p>
+                    {% else %}
+                        <!-- AI Insights Grid -->
+                        <div class="row g-4">
+                            <!-- Application Trend Analysis -->
+                            <div class="col-md-6">
+                                <div class="insight-card">
+                                    <div class="insight-card-header">
+                                        <h5 class="mb-0 fw-bold">
+                                            <i class="fas fa-chart-line me-2 text-primary"></i> Application Trends
+                                        </h5>
+                                        <span class="ai-badge">
+                                            <i class="fas fa-robot"></i> AI
+                                        </span>
+                                    </div>
+                                    <div class="insight-card-body">
+                                        <h6 class="fw-bold mb-3">{{ ai_analysis.application_trend_analysis.summary }}</h6>
+                                        <p>{{ ai_analysis.application_trend_analysis.details }}</p>
+                                        
+                                        <div class="recommendation-item">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="fas fa-lightbulb text-warning me-2"></i>
+                                                <h6 class="mb-0 fw-bold">Recommendation</h6>
+                                            </div>
+                                            <p class="mb-0">{{ ai_analysis.application_trend_analysis.recommendation }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Worker Profile Analysis -->
+                            <div class="col-md-6">
+                                <div class="insight-card">
+                                    <div class="insight-card-header">
+                                        <h5 class="mb-0 fw-bold">
+                                            <i class="fas fa-users me-2 text-primary"></i> Worker Profiles
+                                        </h5>
+                                        <span class="ai-badge">
+                                            <i class="fas fa-robot"></i> AI
+                                        </span>
+                                    </div>
+                                    <div class="insight-card-body">
+                                        <h6 class="fw-bold mb-3">{{ ai_analysis.worker_profile_analysis.summary }}</h6>
+                                        <p>{{ ai_analysis.worker_profile_analysis.details }}</p>
+                                        
+                                        <h6 class="fw-bold mb-2">Top Skills:</h6>
+                                        <div class="d-flex flex-wrap mb-3">
+                                            {% for skill in ai_analysis.worker_profile_analysis.top_skills %}
+                                                <span class="skill-badge">{{ skill }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <div class="recommendation-item">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="fas fa-lightbulb text-warning me-2"></i>
+                                                <h6 class="mb-0 fw-bold">Recommendation</h6>
+                                            </div>
+                                            <p class="mb-0">{{ ai_analysis.worker_profile_analysis.recommendation }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Job Performance Metrics -->
+                            <div class="col-md-6">
+                                <div class="insight-card">
+                                    <div class="insight-card-header">
+                                        <h5 class="mb-0 fw-bold">
+                                            <i class="fas fa-trophy me-2 text-primary"></i> Job Performance
+                                        </h5>
+                                        <span class="ai-badge">
+                                            <i class="fas fa-robot"></i> AI
+                                        </span>
+                                    </div>
+                                    <div class="insight-card-body">
+                                        <h6 class="fw-bold mb-3">Best Performing Jobs:</h6>
+                                        <ol class="mb-4">
+                                            {% for job in ai_analysis.job_performance_metrics.best_performing_jobs %}
+                                                <li class="mb-2"><span class="highlight-text">{{ job }}</span></li>
+                                            {% endfor %}
+                                        </ol>
+                                        
+                                        <h6 class="fw-bold mb-2">Why They Perform Well:</h6>
+                                        <p>{{ ai_analysis.job_performance_metrics.details }}</p>
+                                        
+                                        <h6 class="fw-bold mb-2">Areas for Improvement:</h6>
+                                        <p>{{ ai_analysis.job_performance_metrics.improvement_areas }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Market Insights -->
+                            <div class="col-md-6">
+                                <div class="insight-card">
+                                    <div class="insight-card-header">
+                                        <h5 class="mb-0 fw-bold">
+                                            <i class="fas fa-globe me-2 text-primary"></i> Market Insights
+                                        </h5>
+                                        <span class="ai-badge">
+                                            <i class="fas fa-robot"></i> AI
+                                        </span>
+                                    </div>
+                                    <div class="insight-card-body">
+                                        <h6 class="fw-bold mb-2">Key Trends:</h6>
+                                        <ul class="mb-3">
+                                            {% for trend in ai_analysis.market_insights.trends %}
+                                                <li class="mb-2">{{ trend }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                        
+                                        <h6 class="fw-bold mb-2">Opportunities:</h6>
+                                        <ul class="mb-3">
+                                            {% for opportunity in ai_analysis.market_insights.opportunities %}
+                                                <li class="mb-2">{{ opportunity }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                        
+                                        <h6 class="fw-bold mb-2">Challenges:</h6>
+                                        <ul>
+                                            {% for challenge in ai_analysis.market_insights.challenges %}
+                                                <li class="mb-2">{{ challenge }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Overall Recommendations -->
+                        <div class="card mt-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0 fw-bold">
+                                    <i class="fas fa-lightbulb me-2 text-warning"></i> AI-Recommended Action Plan
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for recommendation in ai_analysis.overall_recommendations %}
+                                        <div class="col-md-4 mb-3">
+                                            <div class="recommendation-item h-100">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
+                                                        <small>{{ loop.index }}</small>
+                                                    </div>
+                                                    <h6 class="mb-0 fw-bold">Action Item</h6>
+                                                </div>
+                                                <p class="mb-0">{{ recommendation }}</p>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Job-specific Performance -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-briefcase me-2 text-primary"></i> Job-Specific Performance
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Job Title</th>
+                                    <th>Location</th>
+                                    <th>Work Date</th>
+                                    <th>Wage</th>
+                                    <th>Applications</th>
+                                    <th class="text-end pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job in jobs %}
+                                <tr>
+                                    <td class="ps-4 fw-medium">{{ job.title }}</td>
+                                    <td><i class="fas fa-map-marker-alt text-secondary me-1"></i> {{ job.location }}</td>
+                                    <td><i class="fas fa-calendar-alt text-secondary me-1"></i> {{ job.work_date.strftime('%b %d, %Y') }}</td>
+                                    <td><i class="fas fa-rupee-sign text-secondary me-1"></i> {{ job.wage }}/hour</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-2">{{ job.applications|length }}</div>
+                                            {% if job.applications|length > 0 %}
+                                                {% if (job.applications|length / basic_stats.application_per_job_avg) > 1.2 %}
+                                                    <span class="trend-up"><i class="fas fa-arrow-up"></i></span>
+                                                {% elif (job.applications|length / basic_stats.application_per_job_avg) < 0.8 %}
+                                                    <span class="trend-down"><i class="fas fa-arrow-down"></i></span>
+                                                {% else %}
+                                                    <span class="trend-neutral"><i class="fas fa-equals"></i></span>
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <a href="{{ url_for('job_applications', job_id=job.id) }}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                            <i class="fas fa-eye me-1"></i> View Applications
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Application Trend Chart
+        const appTrendCtx = document.getElementById('applicationTrendChart');
+        if (appTrendCtx) {
+            const appData = {{ basic_stats.applications_by_date|tojson }};
+            
+            const dates = appData.map(item => item.date);
+            const counts = appData.map(item => item.count);
+            
+            new Chart(appTrendCtx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Applications',
+                        data: counts,
+                        borderColor: '#4338ca',
+                        backgroundColor: 'rgba(67, 56, 202, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#4338ca'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxTicksLimit: 10,
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Skills Chart
+        const skillsCtx = document.getElementById('skillsChart');
+        if (skillsCtx) {
+            const skillsData = {{ basic_stats.top_skills|tojson }};
+            
+            if (Object.keys(skillsData).length > 0) {
+                const labels = Object.keys(skillsData);
+                const data = Object.values(skillsData);
+                
+                const backgroundColors = [
+                    'rgba(79, 70, 229, 0.7)',
+                    'rgba(67, 56, 202, 0.7)',
+                    'rgba(109, 40, 217, 0.7)',
+                    'rgba(124, 58, 237, 0.7)',
+                    'rgba(139, 92, 246, 0.7)',
+                    'rgba(167, 139, 250, 0.7)',
+                    'rgba(196, 181, 253, 0.7)',
+                    'rgba(79, 70, 229, 0.5)',
+                    'rgba(67, 56, 202, 0.5)',
+                    'rgba(109, 40, 217, 0.5)'
+                ];
+                
+                new Chart(skillsCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: backgroundColors,
+                            borderWidth: 1,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.raw || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = Math.round((value / total) * 100);
+                                        return `${label}: ${value} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    });
+</script>
+{% endblock %} 

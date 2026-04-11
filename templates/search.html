@@ -1,0 +1,682 @@
+{% extends "base.html" %}
+
+{% block title %}Search Workers{% endblock %}
+
+{% block head %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<!-- jQuery UI CSS for autocomplete -->
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<style>
+    #map {
+        width: 100%;
+        height: 400px;
+        border-radius: 4px;
+    }
+    .leaflet-popup-content {
+        margin: 8px;
+        min-width: 200px;
+    }
+    .worker-popup {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .worker-popup h6 {
+        margin: 0 0 8px 0;
+        color: #333;
+        font-weight: 600;
+    }
+    .worker-popup .worker-info {
+        margin-bottom: 8px;
+    }
+    .worker-popup .worker-info p {
+        margin: 2px 0;
+        font-size: 0.9em;
+    }
+    .worker-popup .worker-skills {
+        margin-top: 8px;
+    }
+    .worker-popup .skill-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        background: #e9ecef;
+        border-radius: 3px;
+        font-size: 0.8em;
+        margin: 2px;
+    }
+    .worker-popup .worker-status {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.8em;
+        margin-top: 4px;
+    }
+    .worker-popup .status-available {
+        background: #28a745;
+        color: white;
+    }
+    .worker-popup .status-busy {
+        background: #ffc107;
+        color: #000;
+    }
+    .worker-popup .status-offline {
+        background: #dc3545;
+        color: white;
+    }
+    /* Fix for modal flickering */
+    .modal {
+        z-index: 1050 !important;
+    }
+    .modal-backdrop {
+        z-index: 1040 !important;
+    }
+    /* Fix for worker card hover */
+    .worker-card {
+        border-radius: var(--border-radius);
+        border: 1px solid var(--border-color);
+        background-color: var(--card-bg, white);
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+        position: relative;
+    }
+    .worker-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-md);
+    }
+    .worker-card-header {
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .worker-avatar {
+        width: 65px;
+        height: 65px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-right: 1rem;
+        border: 2px solid white;
+        box-shadow: var(--shadow-sm);
+    }
+    .worker-info {
+        flex: 1;
+    }
+    .worker-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--gray-900);
+        margin-bottom: 0.25rem;
+    }
+    .worker-title {
+        font-size: 0.875rem;
+        color: var(--gray-600);
+        margin-bottom: 0.5rem;
+    }
+    .worker-meta {
+        display: flex;
+        align-items: center;
+        font-size: 0.75rem;
+        color: var(--gray-500);
+    }
+    .worker-meta i {
+        margin-right: 0.25rem;
+    }
+    .worker-meta > div {
+        margin-right: 1rem;
+    }
+    .worker-rating {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--gray-800);
+        border-radius: 50px;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        box-shadow: var(--shadow-sm);
+    }
+    .worker-rating i {
+        color: #ffc107;
+    }
+    .worker-card-body {
+        padding: 1.5rem;
+    }
+    .worker-skills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .skill-badge {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--primary);
+        background-color: rgba(79, 70, 229, 0.1);
+        transition: transform 0.3s ease;
+    }
+    .skill-badge:hover {
+        transform: translateY(-2px);
+    }
+    .worker-bio {
+        font-size: 0.875rem;
+        color: var(--gray-700);
+        line-height: 1.5;
+        margin-bottom: 1.5rem;
+        max-height: 4.5rem;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+    }
+    .worker-card-footer {
+        display: flex;
+        border-top: 1px solid var(--border-color);
+        padding: 1rem 1.5rem;
+        background-color: rgba(249, 250, 251, 0.5);
+    }
+    .worker-card-footer .btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem;
+        border-radius: var(--border-radius);
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .worker-card-footer .btn:first-child {
+        margin-right: 0.5rem;
+    }
+    .tooltip-text {
+        position: absolute;
+        top: -40px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.3s, visibility 0.3s;
+        z-index: 100;
+    }
+    .tooltip-text::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+    }
+    button[disabled]:hover + .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+    /* Filters */
+    .filters-container {
+        background-color: var(--card-bg, white);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-color);
+    }
+    .filter-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .filter-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--gray-900);
+    }
+    .filter-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+    .filter-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--gray-700);
+        margin-bottom: 0.5rem;
+    }
+    .filter-control {
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 0.5rem;
+        color: var(--gray-700);
+    }
+    .filter-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 1rem;
+    }
+    /* Modal */
+    .modal-content {
+        border: none;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-lg);
+    }
+    .modal-header {
+        border-bottom: 1px solid var(--border-color);
+        padding: 1.25rem 1.5rem;
+    }
+    .modal-title {
+        font-weight: 600;
+        color: var(--gray-900);
+    }
+    .modal-body {
+        padding: 1.5rem;
+    }
+    .modal-footer {
+        border-top: 1px solid var(--border-color);
+        padding: 1.25rem 1.5rem;
+    }
+    /* Prevent button flickering */
+    .btn-group {
+        position: relative;
+        z-index: 1; 
+    }
+    /* Style for disabled button with tooltip */
+    .btn-invite {
+        position: relative;
+    }
+    .btn-invite .tooltip-text {
+        visibility: hidden;
+        width: 220px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 4px;
+        padding: 8px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -110px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 12px;
+    }
+    .btn-invite .tooltip-text::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #333 transparent transparent transparent;
+    }
+    .btn-invite:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+    .job-list {
+        margin-top: 5px;
+        font-size: 11px;
+        text-align: left;
+    }
+    .job-list ul {
+        padding-left: 15px;
+        margin-bottom: 0;
+    }
+    .job-list li {
+        margin-bottom: 2px;
+    }
+    /* Styling for autocomplete */
+    .ui-autocomplete {
+        max-height: 200px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        z-index: 1060 !important;
+    }
+    .ui-menu .ui-menu-item {
+        padding: 5px 10px;
+        font-size: 14px;
+    }
+    .ui-menu .ui-menu-item:hover {
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+    .ui-state-active, 
+    .ui-widget-content .ui-state-active {
+        border: 1px solid #4f46e5 !important;
+        background: #eef1ff !important;
+        color: #4f46e5 !important;
+    }
+    .ui-helper-hidden-accessible {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Search Filters -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Search Filters</h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('search_workers') }}" id="searchForm">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" class="form-control autocomplete" id="name" name="name" value="{{ request.args.get('name', '') }}" data-type="worker_names" placeholder="Type worker name...">
+                        </div>
+                        <div class="mb-3">
+                            <label for="skill" class="form-label">Skill</label>
+                            <input type="text" class="form-control autocomplete" id="skill" name="skill" value="{{ request.args.get('skill', '') }}" data-type="skills" placeholder="Type skill (e.g. carpentry, plumbing)...">
+                        </div>
+                        <div class="mb-3">
+                            <label for="location" class="form-label">Location</label>
+                            <input type="text" class="form-control autocomplete" id="location" name="location" value="{{ request.args.get('location', '') }}" data-type="locations" placeholder="Type location...">
+                        </div>
+                        <div class="mb-3">
+                            <label for="min_rating" class="form-label">Minimum Rating</label>
+                            <input type="number" class="form-control" id="min_rating" name="min_rating" min="0" max="5" step="0.1" value="{{ request.args.get('min_rating', '0') }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="max_rate" class="form-label">Maximum Hourly Rate</label>
+                            <input type="number" class="form-control" id="max_rate" name="max_rate" min="0" value="{{ request.args.get('max_rate', '') }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All</option>
+                                <option value="available" {% if request.args.get('status') == 'available' %}selected{% endif %}>Available</option>
+                                <option value="busy" {% if request.args.get('status') == 'busy' %}selected{% endif %}>Busy</option>
+                                <option value="offline" {% if request.args.get('status') == 'offline' %}selected{% endif %}>Offline</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Search</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results and Map -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Search Results</h5>
+                </div>
+                <div class="card-body">
+                    <div id="map" style="height: 400px; margin-bottom: 20px;"></div>
+
+                    {# ---- NEW: Display message based on search mode ---- #}
+                    {% if search_mode == 'fuzzy' %}
+                        {# Use a paragraph with text utilities for a persistent indication #}
+                        <p class="text-success small mb-3"> {# Use text-info for color, small for size, mb-3 for spacing #}
+                            <i class="fas fa-exclamation-circle text-danger me-1"></i> {# Keep the icon, adjust margin if needed #}
+                            No exact matches found. Showing the closest results based on your search criteria.
+                        </p>
+                    {% endif %}
+                    {# ---- END NEW ---- #}
+
+                    {% if workers %}
+                        <div class="row">
+                            {% for worker in workers %}
+                            <div class="col-md-6 mb-4">
+                                <div class="card h-100 worker-card">
+                                    <div class="card-body">
+                                        {# --- Worker Card Content (Existing: image, name, location, rating, rate, status, skills) --- #}
+                                        <div class="d-flex align-items-center mb-3">
+                                             {% if worker.image %}
+                                                 <img src="{{ worker.image }}" alt="{{ worker.name }}" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                                             {% else %}
+                                                 <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                                                     {{ worker.name[0] }}
+                                                 </div>
+                                             {% endif %}
+                                             <div>
+                                                 <h5 class="mb-0">{{ worker.name }}</h5>
+                                                 <div class="text-muted small">
+                                                     <i class="fas fa-map-marker-alt"></i> {{ worker.location }}
+                                                 </div>
+                                             </div>
+                                         </div>
+                                         <div class="mb-2">
+                                              <div class="d-flex align-items-center mb-2">
+                                                 <div class="me-3">
+                                                     <i class="fas fa-star text-warning"></i>
+                                                     {{ "%.1f"|format(worker['rating']) }}
+                                                 </div>
+                                                 <div class="me-3">
+                                                     <i class="fas fa-rupee-sign"></i>
+                                                     {{ worker['hourly_rate'] }}/hr
+                                                 </div>
+                                                 <div class="badge bg-{{ 'success' if worker['status'] == 'available' else 'warning' if worker['status'] == 'busy' else 'danger' }}">
+                                                     {{ worker['status'] }}
+                                                 </div>
+                                             </div>
+                                             <div class="mb-2">
+                                                 {% for skill in worker['skills'] %}
+                                                     <span class="badge bg-info me-1">{{ skill }}</span>
+                                                 {% endfor %}
+                                             </div>
+                                         </div>
+                                        {# --- End Worker Card Content --- #}
+
+                                        <div class="d-flex justify-content-between mt-3">
+                                            <a href="{{ url_for('view_profile', user_id=worker['id']) }}" class="btn btn-primary btn-sm">View Profile</a>
+
+                                            {# --- Employer Buttons (Existing Invite Logic) --- #}
+                                            {% if current_user.user_type == 'employer' %}
+                                                <div class="btn-group">
+                                                  <a href="{{ url_for('create_chat', user_id=worker['id']) }}" class="btn btn-primary btn-sm">Chat</a>
+
+                                                  {# --- Complex Invite Button Logic (Keep As Is) --- #}
+                                                  {% if worker['status'] == 'available' and employer_jobs|length > 0 %}
+                                                      {% set can_invite = true %}
+                                                      {# ... rest of the complex set variables ... #}
+                                                      {% for job in employer_jobs %}
+                                                         {# ... job status checks ... #}
+                                                      {% endfor %}
+                                                      {# ... set btn_text, btn_class, tooltip_message ... #}
+
+                                                      <div class="btn-invite"> {# Ensure tooltip JS works with this structure #}
+                                                          <button type="button"
+                                                                  class="btn {{ btn_class }} btn-sm"
+                                                                  {% if can_invite %}
+                                                                  data-bs-toggle="modal"
+                                                                  data-bs-target="#inviteModal{{ worker['id'] }}"
+                                                                  {% else %}
+                                                                  disabled title="{{ tooltip_message }}" {# Add basic title tooltip for disabled #}
+                                                                  {% endif %}>
+                                                              {{ btn_text }}
+                                                          </button>
+                                                          {% if tooltip_message and not can_invite %} {# Show tooltip content conditionally if complex HTML tooltip is needed #}
+                                                              {# <div class="tooltip-text"> ... detailed tooltip ... </div> #}
+                                                          {% endif %}
+                                                      </div>
+                                                  {% endif %}
+                                                  {# --- End Invite Button Logic --- #}
+                                                </div>
+                                            {% endif %}
+                                            {# --- End Employer Buttons --- #}
+                                        </div>
+                                    </div> {# End card-body #}
+                                </div> {# End card #}
+                            </div> {# End col-md-6 #}
+                            {% endfor %}
+                        </div> {# End row #}
+                    {% else %}
+                        {# This block now correctly executes only when NO workers were found at all #}
+                        <div class="alert alert-warning" role="alert"> {# Changed to warning for visual difference #}
+                           <i class="fas fa-exclamation-triangle me-2"></i> No workers found matching your criteria. Try broadening your search.
+                        </div>
+                    {% endif %}
+                </div> {# End card-body #}
+            </div> {# End card #}
+        </div>
+    </div>
+</div>
+
+<!-- Moved modals outside the main content area to prevent flickering -->
+{% if workers and current_user.user_type == 'employer' %}
+    {% for worker in workers %}
+        {% if worker['status'] == 'available' and employer_jobs|length > 0 %}
+        <div class="modal fade" id="inviteModal{{ worker['id'] }}" tabindex="-1" aria-labelledby="inviteModalLabel{{ worker['id'] }}" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="inviteModalLabel{{ worker['id'] }}">Invite {{ worker['name'] }} to a Job</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="" method="POST" id="inviteForm{{ worker['id'] }}">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="jobSelect{{ worker['id'] }}" class="form-label">Select Job</label>
+                                <select class="form-select" id="jobSelect{{ worker['id'] }}" onchange="updateInviteForm({{ worker['id'] }}, this.value)">
+                                    <option value="">-- Select Job --</option>
+                                    {% for job in employer_jobs %}
+                                        {% if job.is_filled == false and job.status == 'open' %}
+                                            {% set job_status = worker.job_applications.get(job.id, '') %}
+                                            {% if job_status not in ['pending', 'accepted'] %}
+                                                <option value="{{ job.id }}">{{ job.title }} ({{ job.location }}, {{ job.work_date.strftime('%d %b, %Y') }})</option>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="message{{ worker['id'] }}" class="form-label">Message (Optional)</label>
+                                <textarea class="form-control" id="message{{ worker['id'] }}" name="message" rows="3" placeholder="Enter a message to the worker"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success">Send Invitation</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
+<!-- Include Leaflet CSS and JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<!-- jQuery and jQuery UI for autocomplete -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+<script>
+// Store workers data in a variable
+const workersData = {{ workers|tojson|safe }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize map
+    const map = L.map('map').setView([20.5937, 78.9629], 5); // Center on India
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Add markers for workers
+    workersData.forEach(function(worker) {
+        if (worker.lat && worker.lng) {  // Only add markers if coordinates exist
+            const statusClass = worker.status === 'available' ? 'status-available' : 
+                              worker.status === 'busy' ? 'status-busy' : 'status-offline';
+            
+            const popupContent = `
+                <div class="worker-popup">
+                    <h6>${worker.name}</h6>
+                    <div class="worker-info">
+                        <p><i class="fas fa-map-marker-alt"></i> ${worker.location}</p>
+                        <p><i class="fas fa-star text-warning"></i> ${worker.rating.toFixed(1)}</p>
+                        <p><i class="fas fa-rupee-sign"></i> ${worker.hourly_rate}/hr</p>
+                    </div>
+                    <div class="worker-skills">
+                        ${worker.skills.map(skill => `<span class="skill-badge">${skill}</span>`).join('')}
+                    </div>
+                    <div class="worker-status">
+                        <span class="${statusClass}">${worker.status}</span>
+                    </div>
+                    <div style="margin-top: 8px;">
+                        <a href="/profile/${worker.id}" class="btn btn-sm btn-primary">View Profile</a>
+                        {% if current_user.user_type == 'employer' %}
+                        <a href="/chat/create/${worker.id}" class="btn btn-sm btn-outline-primary">Chat</a>
+                        {% endif %}
+                    </div> 
+                </div>
+            `;
+
+        const marker = L.marker([worker.lat, worker.lng])
+                .bindPopup(popupContent)
+            .addTo(map);
+        }
+    });
+    
+    // Fit bounds to show all markers
+    if (workersData.length > 0) {
+        const validCoords = workersData.filter(w => w.lat && w.lng).map(w => [w.lat, w.lng]);
+        if (validCoords.length > 0) {
+            const bounds = L.latLngBounds(validCoords);
+        map.fitBounds(bounds);
+        }
+    }
+    
+    // Set up autocomplete for search fields
+    $('.autocomplete').each(function() {
+        const inputField = $(this);
+        const dataType = inputField.data('type');
+        
+        inputField.autocomplete({
+            source: function(request, response) {
+                $.ajax({
+                    url: "/api/autocomplete",
+                    dataType: "json",
+                    data: {
+                        term: request.term,
+                        type: dataType
+                    },
+                    success: function(data) {
+                        response(data);
+                    }
+                });
+            },
+            minLength: 2,
+            select: function(event, ui) {
+                inputField.val(ui.item.value);
+                return false;
+            }
+        });
+    });
+});
+
+// Function to update invite form action based on selected job
+function updateInviteForm(workerId, jobId) {
+    if (jobId) {
+        document.getElementById('inviteForm' + workerId).action = '/workers/' + workerId + '/invite/' + jobId;
+    }
+}
+</script>
+{% endblock %}

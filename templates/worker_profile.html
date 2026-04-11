@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Worker Profile - {{ worker.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <!-- Profile Header -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    {% if worker.profile_pic %}
+                        <img src="{{ worker.profile_pic }}" alt="{{ worker.name }}" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                    {% else %}
+                        <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center text-white bg-secondary" style="width: 150px; height: 150px; font-size: 4rem;">
+                            {{ worker.name[0] }}
+                        </div>
+                    {% endif %}
+                    <h3 class="mb-2">{{ worker.name }}</h3>
+                    <p class="text-muted mb-3">{{ worker.email }}</p>
+                    
+                    <!-- Rating Display -->
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <div class="rating-display">
+                                {% for i in range(5) %}
+                                    {% if i < (worker.avg_rating or 0) %}
+                                        <i class="fas fa-star text-warning"></i>
+                                    {% else %}
+                                        <i class="far fa-star text-warning"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <span class="ms-2 fw-bold">{{ "%.1f"|format(worker.avg_rating or 0) }}/5.0</span>
+                        </div>
+                        <p class="text-muted small mb-0">Based on {{ worker.ratings|length }} completed jobs</p>
+                    </div>
+
+                    {% if current_user.is_authenticated and current_user.type == 'employer' %}
+                        <a href="{{ url_for('invite_worker', worker_id=worker.id) }}" class="btn btn-primary rounded-pill">
+                            <i class="fas fa-paper-plane me-1"></i> Invite to Job
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Details -->
+        <div class="col-md-8">
+            <!-- Basic Information -->
+            <div class="card mb-4">
+                <div class="card-header py-3">
+                    <h5 class="mb-0 fw-bold">Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Phone</label>
+                            <p class="mb-0">{{ worker.phone or 'Not provided' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Location</label>
+                            <p class="mb-0">{{ worker.location or 'Not provided' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Experience</label>
+                            <p class="mb-0">{{ worker.experience or 'Not provided' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Skills</label>
+                            <p class="mb-0">{{ worker.skills or 'Not provided' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Work History -->
+            <div class="card mb-4">
+                <div class="card-header py-3">
+                    <h5 class="mb-0 fw-bold">Work History</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if worker.ratings %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Job</th>
+                                        <th>Employer</th>
+                                        <th>Date</th>
+                                        <th>Rating</th>
+                                        <th>Comments</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rating in worker.ratings %}
+                                    <tr>
+                                        <td class="ps-4">{{ rating.application.job.title }}</td>
+                                        <td>{{ rating.application.job.employer.name }}</td>
+                                        <td>{{ rating.created_at.strftime('%b %d, %Y') }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="rating-display">
+                                                    {% for i in range(5) %}
+                                                        {% if i < rating.rating %}
+                                                            <i class="fas fa-star text-warning"></i>
+                                                        {% else %}
+                                                            <i class="far fa-star text-warning"></i>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                                <span class="ms-2">{{ rating.rating }}/5</span>
+                                            </div>
+                                        </td>
+                                        <td>{{ rating.comments or 'No comments' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="p-4 text-center">
+                            <img src="https://cdn-icons-png.flaticon.com/512/4076/4076445.png" alt="No work history" class="img-fluid mb-3" style="max-height: 100px; opacity: 0.5;">
+                            <p class="text-muted mb-0">No completed jobs yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.rating-display {
+    display: inline-flex;
+    gap: 2px;
+}
+.rating-display i {
+    font-size: 1.1rem;
+}
+</style>
+{% endblock %} 
