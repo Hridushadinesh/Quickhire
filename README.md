@@ -1,102 +1,138 @@
 # 🚀 QuickHire – Job Portal for Daily Wage Workers
 
-## 📌 Description
+A web-based job portal that connects daily wage workers with employers, making job discovery, hiring, and communication easier.
 
-QuickHire is a web-based platform developed as part of a group academic project to connect daily wage workers with employers. The system simplifies job searching and hiring by providing role-based access, real-time communication, and intelligent job matching.
+## 📌 About the Project
 
----
+QuickHire is a web application developed as part of a B.Tech group academic project. It provides a platform where daily wage workers can find suitable job opportunities and employers can connect with skilled workers.
+
+The application offers separate interfaces for workers, employers, and administrators, along with job management, worker search, and real-time communication features.
 
 ## ✨ Features
 
-* 👷 Worker & Employer Registration/Login
-* 📢 Job Posting and Application System
-* 🔍 Basic Job Search and Filtering
-* 💬 Real-time Chat (Socket.IO)
-* 🛠️ Admin Dashboard for user management
-  
+- **User Authentication:** Separate registration and login for workers and employers.
+- **Job Posting:** Employers can publish job opportunities.
+- **Job Applications:** Workers can browse available jobs and apply.
+- **Job Search:** Search and filter job listings.
+- **Worker Search:** Employers can search for workers based on relevant details.
+- **Location Map:** View worker locations through an interactive map.
+- **Real-Time Chat:** Communication between workers and employers using Socket.IO.
+- **Notifications:** Notification functionality for application-related updates.
+- **Admin Dashboard:** Manage users and monitor platform activity.
 
----
+## 🛠️ Technologies Used
 
-## 🧠 Technologies Used
+| Category | Technologies |
+|---|---|
+| Frontend | HTML, CSS, JavaScript, Bootstrap |
+| Backend | Python, Flask |
+| Database | SQLite |
+| Real-time Communication | Flask-SocketIO, Socket.IO |
+| Map Integration | Leaflet, OpenStreetMap |
 
-* **Frontend:** HTML, CSS, JavaScript, Bootstrap
-* **Backend:** Flask (Python)
-* **Database:** SQLite
-* **Real-time Communication:** Socket.IO
+## 👥 User Roles
 
----
+### 👷 Worker
+- Register and log in.
+- Create and manage a worker profile.
+- Search for available jobs.
+- Apply for job opportunities.
+- Communicate with employers.
+- View notifications.
 
-## ⚙️ Installation & Setup
+### 🧑‍💼 Employer
+- Register and log in.
+- Post job opportunities.
+- Search for workers.
+- View job applicants.
+- Communicate with workers.
+- Manage job applications.
 
-### 1. Clone the repository
+### 🛡️ Administrator
+- Manage platform users.
+- Monitor platform activity.
+
+## ⚙️ Installation and Setup
+
+Follow these steps to run QuickHire locally.
+
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Hridushadinesh/Quickhire.git
-cd Quickhire
+git clone https://github.com/Hridushadinesh/QuickHire.git
+cd QuickHire
 ```
 
-### 2. Create virtual environment
+### 2. Create a Virtual Environment
 
 ```bash
 python -m venv venv
-venv\Scripts\activate   # Windows
 ```
 
-### 3. Install dependencies
+### 3. Activate the Virtual Environment
+
+**Windows:**
+
+```bash
+venv\Scripts\activate
+```
+
+### 4. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Run the application
+### 5. Run the Application
 
 ```bash
 python app.py
 ```
 
-### 5. Open in browser
+### 6. Open in Your Browser
 
-http://127.0.0.1:5000
+Visit:
 
----
+```text
+http://127.0.0.1:5000/
+```
 
-## 👤 User Roles
+## 📁 Project Structure
 
-### 👷 Worker
+```text
+QuickHire/
+│
+├── app.py
+├── requirements.txt
+├── templates/
+│   ├── base.html
+│   ├── dashboard.html
+│   └── notifications.html
+│
+├── static/
+│   ├── css/
+│   ├── js/
+│   └── images/
+│
+├── instance/
+│
+└── README.md
+```
 
-* Register and login
-* Search for jobs
-* Apply for jobs
-* Chat with employers
+*Note: The project structure above is illustrative. Your actual repository may contain additional files and folders.*
 
-### 🧑‍💼 Employer
+## 🎓 Project Information
 
-* Register and login
-* Post job listings
-* View applicants
-* Chat with workers
+- **Project Type:** B.Tech Group Academic Project
+- **Project Name:** QuickHire – Job Portal for Daily Wage Workers
+- **Domain:** Web Development
 
-### 🛡️ Admin
+## 👩‍💻 Author
 
-* Manage users
-* Monitor system activity
+**Hridusha Dinesh Kumar U V**
 
----
-
-## 📌 Project Type
-
-Third Year B.Tech Mini Project
-
----
-
-## 👤 Author
-
-Hridusha Dinesh Kumar UV
-
-*This project was developed as part of a group academic project.*
-
----
+This project was developed as part of a group academic project.
 
 ## 📄 License
 
-This project is developed for academic purposes.
+This project was developed for academic purposes.
