@@ -855,12 +855,11 @@
                 </div>
             </div>
             <div class="card-body p-0">
-                {% set sent_invitations = [] %}
-                {% for app in applications %}
-                    {% if app.initiated_by == 'employer' %}
-                        {% set sent_invitations = sent_invitations + [app] %}
-                    {% endif %}
-                {% endfor %}
+                
+                {% set sent_invitations = applications
+                    | selectattr('initiated_by', 'equalto', 'employer')
+                    | list %}
+
                 
                 {% if sent_invitations %}
                 <div class="table-responsive">
@@ -1130,12 +1129,13 @@
                 </div>
             </div>
             <div class="card-body p-0">
-                {% set worker_applications = [] %}
-                {% for app in applications %}
-                    {% if app.initiated_by == 'worker' %}
-                        {% set worker_applications = worker_applications + [app] %}
-                    {% endif %}
-                {% endfor %}
+                
+                
+                {% set worker_applications = applications
+                    | selectattr('initiated_by', 'equalto', 'worker')
+                    | list %}
+
+
                 
                 {% if worker_applications %}
                 <div class="table-responsive">
@@ -1206,8 +1206,12 @@
 {% block scripts %}
 <script>
 // Set up variables from Jinja context
-const showProfileReminder = ({% if show_profile_reminder is defined %}{{ show_profile_reminder|tojson }}{% else %}false{% endif %});
-const profileDismissUrl = '{{ url_for("profile", dismiss="true") }}';
+
+const showProfileReminder = {{ show_profile_reminder|default(false)|tojson }};
+
+
+const profileDismissUrl = {{ url_for("profile", dismiss="true")|tojson }};
+
 
 document.addEventListener('DOMContentLoaded', function() {
     // Show the profile reminder modal when the page loads

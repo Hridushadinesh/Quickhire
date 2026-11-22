@@ -302,6 +302,18 @@ class Application(db.Model):
     employer_approved = db.Column(db.Boolean, default=False)
     message = db.Column(db.Text)  # Optional message for the request
 
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    recipient_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id'),
+        nullable=False
+    )
+    title = db.Column(db.String(150), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    link = db.Column(db.String(300))
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 class Rating(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     application_id = db.Column(db.Integer, db.ForeignKey('application.id'), nullable=False)
@@ -713,6 +725,32 @@ def dashboard():
         ))
         return response
 
+@app.route('/notifications')
+@login_required
+def notifications():
+    user_notifications = Notification.query.filter_by(
+        recipient_id=current_user.id
+    ).order_by(Notification.created_at.desc()).all()
+
+    return render_template(
+        'notifications.html',
+        notifications=user_notifications
+    )
+
+
+@app.route('/notifications/<int:notification_id>/read', methods=['POST'])
+@login_required
+def mark_notification_read(notification_id):
+    notification = Notification.query.get_or_404(notification_id)
+
+    if notification.recipient_id != current_user.id:
+        flash('Access denied', 'danger')
+        return redirect(url_for('notifications'))
+
+    notification.is_read = True
+    db.session.commit()
+
+    return redirect(url_for('notifications'))
 @app.route('/jobs')
 @login_required
 def job_listings():
@@ -844,6 +882,15 @@ def apply_for_job(job_id):
             db.session.commit()
         
         # Notify the employer directly about this application
+        new_notification = Notification(
+            recipient_id=job.employer_id,
+            title="New Job Application",
+            message=f"{current_user.name} applied for your job: {job.title}",
+            link=url_for('job_applications', job_id=job.id)
+        )
+
+        db.session.add(new_notification)
+        db.session.commit()        
         flash('Application submitted successfully! You can now chat with the employer.', 'success')
         return redirect(url_for('dashboard'))
         
@@ -1834,8 +1881,21 @@ def inject_chat_rooms():
             (ChatRoom.user1_id == current_user.id) |
             (ChatRoom.user2_id == current_user.id)
         ).all()
-        return dict(chat_rooms=rooms)
-    return dict(chat_rooms=[])
+
+        unread_notifications = Notification.query.filter_by(
+            recipient_id=current_user.id,
+            is_read=False
+        ).count()
+
+        return dict(
+            chat_rooms=rooms,
+            unread_notifications=unread_notifications
+        )
+
+    return dict(
+        chat_rooms=[],
+        unread_notifications=0
+    )
 
 
 @app.route('/jobs/<int:job_id>/delete-application', methods=['POST'])
@@ -2742,7 +2802,8 @@ if __name__ == '__main__':
         if 'is_premium' not in columns:
             print("Adding is_premium column to User table...")
             # Use raw SQL to add the column with a default value
-            db.engine.execute(text('ALTER TABLE user ADD COLUMN is_premium BOOLEAN DEFAULT 0'))
+            with db.engine.begin() as connection:
+                connection.execute(text('ALTER TABLE user ADD COLUMN is_premium BOOLEAN DEFAULT 0'))
             print("is_premium column added successfully with default value of 0 (false)")
         
         # Create all tables without dropping existing ones

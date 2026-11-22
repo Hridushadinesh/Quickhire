@@ -651,6 +651,18 @@
                             </a>
                           </li>
                           
+<li class="nav-item">
+    <a class="nav-link position-relative" href="{{ url_for('notifications') }}">
+        <i class="fas fa-bell"></i> Notifications
+
+        {% if unread_notifications > 0 %}
+            <span class="badge rounded-pill bg-danger ms-1">
+                {{ unread_notifications }}
+            </span>
+        {% endif %}
+    </a>
+</li>
+                 
                           
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('logout') }}">
