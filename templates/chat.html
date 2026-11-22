@@ -7,7 +7,11 @@
         <div class="chat-header-user">
             <div class="user-avatar">
                 {% if other_user.profile_pic %}
-                    <img src="{{ other_user.profile_pic }}" alt="{{ other_user.name }}">
+                    {% if other_user.profile_pic.startswith('http') %}
+                        <img src="{{ other_user.profile_pic }}" alt="{{ other_user.name }}">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='uploads/' ~ other_user.profile_pic) }}" alt="{{ other_user.name }}">
+                    {% endif %}
                 {% else %}
                     <div class="default-avatar">{{ other_user.name[0] }}</div>
                 {% endif %}

@@ -25,28 +25,31 @@ import time
 import hashlib
 import secrets
 import logging
+from dotenv import load_dotenv
 from sqlalchemy import or_, and_, func, desc
 from sqlalchemy.exc import SQLAlchemyError
 import eventlet
+import eventlet.tpool
+load_dotenv()
 # Import SMS utility functions
 from sms_utils import send_job_notification, send_job_invitation, send_application_status_update
 
 import math
 from fuzzywuzzy import fuzz
-from sqlalchemy import func
 # --- Constants ---
 FUZZY_THRESHOLD = 40 # Adjusted based on previous discussion
 DEFAULT_LOCATION_RADIUS_KM = 100 # Default search radius in kilometers - ADJUST AS NEEDED
 
 # Import Gemini API
 import google.generativeai as genai
-import time
+from google.api_core import exceptions as gexc  # NEW: for handling 429 / timeouts cleanly
 
 # Import admin routes
 from admin_routes import admin_bp, init_admin_bp
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key'
+# CHANGED: read the secret key from the environment (falls back to the old value for local dev)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///quickhire.db'
 # Add file upload configurations
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
@@ -74,7 +77,34 @@ user_rooms = {}
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Configure Gemini API
-genai.configure(api_key="***REMOVED***")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# NEW: model name lives in one place. Override with GEMINI_MODEL in your .env if needed.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+# NEW: don't let the SDK silently retry 429s (each retry burns more of the free-tier quota)
+GEMINI_REQUEST_OPTIONS = {"retry": None, "timeout": 20}
+# NEW: keep the cookie-based session small
+MAX_CHAT_HISTORY_MESSAGES = 6
+MAX_STORED_MESSAGE_CHARS = 1000
+
+if GEMINI_API_KEY:
+    # CHANGED: use REST instead of gRPC. gRPC is known to hang/stall under eventlet.
+    genai.configure(api_key=GEMINI_API_KEY, transport="rest")
+else:
+    print("Warning: Gemini API key not found!")
+
+
+def friendly_gemini_error(exc):
+    """Turn a Gemini/Google API exception into a short, user-safe message."""
+    if isinstance(exc, gexc.ResourceExhausted):
+        return "The AI is getting too many requests right now. Please wait about a minute and try again."
+    if isinstance(exc, gexc.DeadlineExceeded):
+        return "The AI took too long to respond. Please try again."
+    if isinstance(exc, (gexc.PermissionDenied, gexc.Unauthenticated)):
+        return "The AI service rejected the API key. Please check the server configuration."
+    if isinstance(exc, gexc.NotFound):
+        return "The configured AI model was not found. Please check the model name."
+    return "Something went wrong while contacting the AI. Please try again."
+
 
 # Helper function to analyze job data using Gemini
 def analyze_job_data_with_gemini(job_data):
@@ -125,9 +155,9 @@ def analyze_job_data_with_gemini(job_data):
     """
     
     try:
-        # Use Gemini 2.0 Flash model
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        response = model.generate_content(prompt)
+        model = genai.GenerativeModel(GEMINI_MODEL)
+        # CHANGED: no hidden SDK retries + timeout
+        response = model.generate_content(prompt, request_options=GEMINI_REQUEST_OPTIONS)
         
         # Parse the response as JSON
         try:
@@ -150,8 +180,9 @@ def analyze_job_data_with_gemini(job_data):
             }
     except Exception as e:
         print(f"Error calling Gemini API: {e}")
+        # CHANGED: friendly message instead of the raw Google error
         return {
-            "error": f"Error calling AI service: {str(e)}"
+            "error": friendly_gemini_error(e)
         }
 
 def allowed_file(filename):
@@ -1112,17 +1143,8 @@ def train_knn_model_v2():
         categorical_features = ['skills'] # Make sure 'skills' is handled correctly as potentially list-like by OneHotEncoder
         numerical_features = ['rating', 'hourly_rate', 'latitude', 'longitude']
 
-        # Handle skills appropriately for OneHotEncoder if they are lists
-        # One way is to MultiLabelBinarizer or similar, or flatten/join them carefully.
-        # For simplicity with OneHotEncoder expecting single category per row in standard use,
-        # let's ensure 'skills' column is treated correctly.
-        # A simple approach if OneHotEncoder struggles: use TF-IDF or CountVectorizer for skills text.
-        # Sticking with OneHotEncoder for now, assuming it handles list-like input or needs adjustment.
-        # If skills are complex, consider a different text vectorization approach.
-
-        # Let's assume skills need preprocessing before OneHotEncoder if they are lists
-        # A placeholder/simplification: Join skills into a single string for OneHotEncoding basic demo
-        # A better approach would use MultiLabelBinarizer or handle list features properly.
+        # Simple approach: join skills into a single string for OneHotEncoding.
+        # A better approach would use MultiLabelBinarizer or a text vectorizer.
         df['skills_joined'] = df['skills'].apply(lambda x: ' '.join(sorted(list(set(x))))) # Simple join
 
         preprocessor = ColumnTransformer(
@@ -1134,11 +1156,9 @@ def train_knn_model_v2():
             remainder='drop' # Drop original 'skills' list column if not used elsewhere
         )
 
-        # KNN doesn't strictly need to be in the pipeline for fitting the preprocessor,
-        # but it's convenient to bundle them. We don't fit KNN here, just the preprocessor.
+        # We only fit the preprocessor here; KNN is fitted later on the relevant subset
         pipeline = Pipeline([
             ('preprocessor', preprocessor),
-            # ('knn', NearestNeighbors()) # We fit KNN later on the relevant subset
         ])
 
         # Fit the preprocessor on the entire dataset
@@ -1314,7 +1334,6 @@ def search_workers():
         ordered_workers = workers_found # Default order is the filtered order
         if workers_found: # Only attempt KNN sorting if there are results
             current_app.logger.info(f"Attempting KNN sorting on {len(workers_found)} workers.")
-            # Assuming train_knn_model_v2 is defined elsewhere and returns (pipeline, worker_id_map)
             knn_pipeline, all_worker_ids_map = train_knn_model_v2()
             if knn_pipeline and all_worker_ids_map:
                 try:
@@ -1335,6 +1354,8 @@ def search_workers():
                         raise ValueError("No data available for KNN model training.")
 
                     all_df = pd.DataFrame(all_worker_data)
+                    # The preprocessor expects the 'skills_joined' column too
+                    all_df['skills_joined'] = all_df['skills'].apply(lambda x: ' '.join(sorted(list(set(x)))))
                     # Transform ALL data using the fitted preprocessor from the pipeline
                     X_all = knn_pipeline.named_steps['preprocessor'].transform(all_df)
 
@@ -1348,30 +1369,25 @@ def search_workers():
                     else:
                         # Select feature vectors for the filtered workers
                         X_filtered = X_all[filtered_indices_in_all]
-                        # Number of neighbors is max the number of filtered results
-                        n_neighbors = min(len(filtered_indices_in_all), 50) # Limit neighbors for performance? Or use len(filtered_indices_in_all)
+                        n_neighbors = min(len(filtered_indices_in_all), 50)
 
                         if n_neighbors > 0:
                             # Fit KNN on the filtered subset to find neighbors *within* this subset
-                            nn = NearestNeighbors(n_neighbors=n_neighbors, metric='cosine') # Cosine often good for high-dim sparse data
+                            nn = NearestNeighbors(n_neighbors=n_neighbors, metric='cosine')
                             nn.fit(X_filtered)
 
                             # Find neighbors for the first worker as a starting point for ordering
-                            # This provides one potential ordering based on similarity to the 'most relevant' (?) first result.
-                            # Other strategies exist (e.g., clustering, averaging vectors).
                             distances, indices = nn.kneighbors(X_filtered[0:1])
 
                             # Reconstruct the ordered list based on KNN results
                             temp_ordered_workers = []
                             seen_ids = set()
-                            # Map indices within the filtered subset back to worker IDs and then objects
                             original_indices_lookup_filtered = {i: idx_in_all for i, idx_in_all in enumerate(filtered_indices_in_all)}
 
                             for idx_in_filtered_subset in indices[0]: # indices[0] corresponds to neighbors of the first item
                                 try:
                                      original_idx = original_indices_lookup_filtered[idx_in_filtered_subset]
                                      worker_id = all_worker_ids_list[original_idx]
-                                     # Find the actual worker object from our 'workers_found' list
                                      worker_obj = next((w for w in workers_found if w.id == worker_id), None)
                                      if worker_obj and worker_id not in seen_ids:
                                          temp_ordered_workers.append(worker_obj)
@@ -1405,7 +1421,7 @@ def search_workers():
                 'hourly_rate': float(worker.hourly_rate) if worker.hourly_rate else 0.0,
                 'location': worker.location,
                 'status': worker.status,
-                'image': worker.profile_pic,
+                'image': url_for('static', filename='uploads/' + worker.profile_pic) if worker.profile_pic and not worker.profile_pic.startswith('http') else worker.profile_pic,
                 'lat': worker.latitude,    # Pass coordinates for map
                 'lng': worker.longitude,
                 'job_applications': worker_job_applications.get(worker.id, {}) # Pass application status
@@ -1661,11 +1677,6 @@ def profile():
         return redirect(url_for('profile'))
     
     return render_template('profile.html', user=current_user)
-
-# ChatRoom model is already defined at the top of the file
-
-# ChatMessage model is already defined at the top of the file
-# Removing duplicate definition
 
 # Chat routes
 @app.route('/chat')
@@ -2163,9 +2174,10 @@ def job_analytics():
                 # Run AI analysis
                 ai_analysis = analyze_job_data_with_gemini(ai_input)
                 
-                # Cache the result
-                session[cache_key] = ai_analysis
-                session[f"{cache_key}_timestamp"] = time.time()
+                # CHANGED: only cache successful analyses (don't cache rate-limit errors for a day)
+                if "error" not in ai_analysis:
+                    session[cache_key] = ai_analysis
+                    session[f"{cache_key}_timestamp"] = time.time()
         except Exception as e:
             print(f"Error in AI analysis: {e}")
             ai_analysis = {
@@ -2231,23 +2243,20 @@ def refresh_job_analytics():
     }
     
     # Run AI analysis without checking cache
-    ai_analysis = {}
     if total_applications > 0:
         try:
-            # Run AI analysis
             ai_analysis = analyze_job_data_with_gemini(ai_input)
             
-            # Update the cache
-            cache_key = f"ai_analysis_{current_user.id}"
-            session[cache_key] = ai_analysis
-            session[f"{cache_key}_timestamp"] = time.time()
-            
-            flash('AI analysis has been refreshed!', 'success')
+            # CHANGED: only cache and report success if the analysis actually worked
+            if "error" in ai_analysis:
+                flash(ai_analysis["error"], 'danger')
+            else:
+                cache_key = f"ai_analysis_{current_user.id}"
+                session[cache_key] = ai_analysis
+                session[f"{cache_key}_timestamp"] = time.time()
+                flash('AI analysis has been refreshed!', 'success')
         except Exception as e:
             print(f"Error in AI analysis: {e}")
-            ai_analysis = {
-                "error": f"Could not complete AI analysis: {str(e)}"
-            }
             flash('Error refreshing AI analysis', 'danger')
     else:
         flash('You need applications before AI analysis can be performed', 'warning')
@@ -2255,122 +2264,10 @@ def refresh_job_analytics():
     # Redirect back to job analytics page
     return redirect(url_for('job_analytics'))
 
-# New route for AI assistant chat
-@app.route('/ai_assistant', methods=['GET', 'POST'])
-@login_required
-def ai_assistant():
-    # Only allow employers to access this page
-    if current_user.user_type != 'employer':
-        flash('Only employers can access the AI assistant', 'danger')
-        return redirect(url_for('dashboard'))
-    
-    # Check if the employer has premium subscription
-    if not current_user.is_premium:
-        flash('This is a premium feature. Please upgrade to access the AI Assistant.', 'warning')
-        return redirect(url_for('premium_subscription'))
-    
-    # Get all workers and jobs for context
-    all_workers = User.query.filter_by(user_type='worker').all()
-    employer_jobs = Job.query.filter_by(employer_id=current_user.id).all()
-    
-    # Build worker profiles for context
-    worker_profiles = []
-    for worker in all_workers:
-        # Calculate average rating
-        rating_text = f"{worker.avg_rating:.1f}/5.0 from {worker.num_ratings} reviews" if worker.num_ratings > 0 else "No ratings yet"
-        
-        # Format skills as a list
-        skills_list = worker.skills.split(',') if worker.skills else []
-        skills_formatted = [skill.strip() for skill in skills_list]
-        
-        # Get application history with this employer
-        applications = Application.query.filter_by(
-            applicant_id=worker.id
-        ).join(
-            Job, Job.id == Application.job_id
-        ).filter(
-            Job.employer_id == current_user.id
-        ).all()
-        
-        application_history = []
-        for app in applications:
-            application_history.append({
-                'job_title': app.job.title,
-                'status': app.status,
-                'date': app.created_at.strftime('%Y-%m-%d')
-            })
-        
-        # Add worker profile
-        worker_profiles.append({
-            'id': worker.id,
-            'name': worker.name,
-            'location': worker.location,
-            'skills': skills_formatted,
-            'rating': rating_text,
-            'status': worker.status,
-            'hourly_rate': worker.hourly_rate if worker.hourly_rate else "Not specified",
-            'bio': worker.bio if worker.bio else "No bio provided",
-            'application_history': application_history
-        })
-    
-    # Build job details for context
-    job_details = []
-    for job in employer_jobs:
-        applications_count = len(job.applications)
-        accepted_count = len([a for a in job.applications if a.status == 'accepted'])
-        
-        job_details.append({
-            'id': job.id,
-            'title': job.title,
-            'location': job.location,
-            'wage': job.wage,
-            'description': job.description,
-            'work_date': job.work_date.strftime('%Y-%m-%d'),
-            'status': job.status,
-            'applications_count': applications_count,
-            'accepted_count': accepted_count,
-            'is_filled': job.is_filled
-        })
-    
-    # Initialize chat history
-    if 'ai_chat_history' not in session:
-        session['ai_chat_history'] = []
-    
-    # Handle form submission
-    ai_response = None
-    if request.method == 'POST':
-        # Get the user message
-        user_message = request.form.get('user_message', '').strip()
-        
-        # Handle image upload if present
-        uploaded_image = None
-        if 'image' in request.files and request.files['image'].filename != '':
-            file = request.files['image']
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                # Fix: Use the Flask app instance directly, not the variable name that might be shadowed
-                file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                file.save(file_path)
-                
-                # Prepare image for AI
-                with open(file_path, "rb") as img_file:
-                    uploaded_image = img_file.read()
-        
-        if user_message or uploaded_image:
-            # Save user message to chat history
-            if user_message:
-                session['ai_chat_history'].append({
-                    'role': 'user',
-                    'content': user_message
-                })
-            elif uploaded_image:
-                session['ai_chat_history'].append({
-                    'role': 'user',
-                    'content': "[Uploaded an image of work that needs to be done]"
-                })
-            
-            # Create system prompt with context about workers and jobs
-            system_prompt = f"""
+
+def build_ai_assistant_system_prompt(worker_profiles, job_details):
+    """System prompt with live worker/job data for the employer's AI assistant."""
+    return f"""
 # QUICKHIRE ASSISTANT - READ THIS PROMPT CAREFULLY AND FOLLOW ALL INSTRUCTIONS
 
 ## CORE IDENTITY
@@ -2439,129 +2336,189 @@ The QuickHire platform allows:
 
 Remember: You are a database query tool, not a general assistant. Your purpose is to help employers find and manage workers based on REAL database information you have access to.
 """
+
+
+def get_gemini_response(system_prompt, history, image_data=None, image_mime="image/jpeg"):
+    """
+    Call Gemini once (no hidden retries) and return (text, ok).
+    ok=False means the text is a user-friendly error and must NOT be saved as an AI reply.
+    The system prompt is passed as system_instruction, so it is always applied
+    no matter how much chat history is trimmed.
+    """
+    started = time.time()
+    try:
+        model = genai.GenerativeModel(GEMINI_MODEL, system_instruction=system_prompt)
+
+        contents = []
+        for m in history:
+            contents.append({
+                "role": "user" if m['role'] == 'user' else "model",
+                "parts": [m['content']]
+            })
+
+        # If an image was uploaded, attach it to the latest user turn
+        if image_data:
+            image_part = {
+                "inline_data": {
+                    "mime_type": image_mime,
+                    "data": base64.b64encode(image_data).decode('utf-8')
+                }
+            }
+            instruction = ("Please analyze this image and suggest suitable workers from the "
+                           "database who have the skills needed for this type of work.")
+            if contents and contents[-1]["role"] == "user":
+                contents[-1]["parts"] = [image_part, contents[-1]["parts"][0] + "\n\n" + instruction]
+            else:
+                contents.append({"role": "user", "parts": [image_part, instruction]})
+
+        started = time.time()
+        app.logger.info(f"Gemini call started (model={GEMINI_MODEL}, turns={len(contents)}, "
+                        f"system_prompt_chars={len(system_prompt)})")
+        response = eventlet.tpool.execute(
+            model.generate_content,
+            contents,
+            request_options=GEMINI_REQUEST_OPTIONS
+        )
+        app.logger.info(f"Gemini call finished in {time.time() - started:.1f}s")
+        return response.text, True
+
+    except Exception as e:
+        app.logger.error(f"Gemini error after {time.time() - started:.1f}s: {e}", exc_info=True)
+        return friendly_gemini_error(e), False
+
+
+# New route for AI assistant chat
+@app.route('/ai_assistant', methods=['GET', 'POST'])
+@login_required
+def ai_assistant():
+    # Only allow employers to access this page
+    if current_user.user_type != 'employer':
+        flash('Only employers can access the AI assistant', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Check if the employer has premium subscription
+    if not current_user.is_premium:
+        flash('This is a premium feature. Please upgrade to access the AI Assistant.', 'warning')
+        return redirect(url_for('premium_subscription'))
+    
+    # Get all workers and jobs for context
+    all_workers = User.query.filter_by(user_type='worker').all()
+    employer_jobs = Job.query.filter_by(employer_id=current_user.id).all()
+    
+    # Handle form submission (POST only: no need to build the big context for a plain page load)
+    if request.method == 'POST':
+        # Build worker profiles for context
+        worker_profiles = []
+        for worker in all_workers:
+            # Calculate average rating
+            rating_text = f"{worker.avg_rating:.1f}/5.0 from {worker.num_ratings} reviews" if worker.num_ratings > 0 else "No ratings yet"
             
-            # Function to call Gemini API with retry logic
-            def get_gemini_response(prompt_content, image_data=None, max_retries=3, retry_delay=2):
-                retries = 0
-                while retries < max_retries:
-                    try:
-                        # Initialize the model with the correct version
-                        if image_data:
-                            model = genai.GenerativeModel('gemini-2.0-flash')
-                            response = model.generate_content([
-                                {"role": "user", "parts": [{"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(image_data).decode('utf-8')}}]},
-                                {"role": "user", "parts": [prompt_content]}
-                            ])
-                        else:
-                            model = genai.GenerativeModel('gemini-2.0-flash')
-                            
-                            # Prepare the message history for the API
-                            # For the first message, combine system prompt with user message
-                            messages = []
-                            
-                            # Create a history of messages for the API in the correct format
-                            for i, message in enumerate(session['ai_chat_history']):
-                                if message['role'] == 'user':
-                                    # For the first user message, prepend the system instructions
-                                    if i == 0:
-                                        combined_content = f"{system_prompt}\n\nUser: {message['content']}"
-                                        messages.append({"role": "user", "parts": [combined_content]})
-                                    else:
-                                        messages.append({"role": "user", "parts": [message['content']]})
-                                else:
-                                    messages.append({"role": "model", "parts": [message['content']]})
-                            
-                            # If we have no history yet but received a new message
-                            if not messages and user_message:
-                                combined_content = f"{system_prompt}\n\nUser: {user_message}"
-                                messages.append({"role": "user", "parts": [combined_content]})
-                            
-                            response = model.generate_content(messages)
-                        
-                        return response.text
-                    except Exception as e:
-                        retries += 1
-                        print(f"Error calling Gemini API: {e}")
-                        if retries < max_retries:
-                            print(f"Retrying in {retry_delay} seconds...")
-                            time.sleep(retry_delay)
-                        else:
-                            return f"Sorry, I encountered an error while processing your request. Please try again later. Error: {str(e)}"
+            # Format skills as a list
+            skills_list = worker.skills.split(',') if worker.skills else []
+            skills_formatted = [skill.strip() for skill in skills_list]
             
-            try:
-                # Prepare the conversation content
-                conversation_content = system_prompt
-                
-                # Add few-shot examples to guide the model's behavior
-                conversation_content += "\n\n## EXAMPLE CONVERSATIONS\n\n"
-                
-                # Example 1: Website question
-                conversation_content += f"""User: "How is this website about?"
-Assistant: "QuickHire is a platform that connects employers like you with daily wage workers. You can post jobs, find workers with specific skills, and manage applications all in one place. Currently, you have access to information about {len(worker_profiles)} workers and {len(job_details)} jobs."
-
-"""
-                
-                # Example 2: Plumber question with actual data
-                conversation_content += """User: "Tell me which worker is a plumber?"
-Assistant: "Here are the workers in our database with plumbing skills:
-
-| Name | Skills | Rating | Location | Status |
-|------|--------|--------|----------|--------|
-"""
-                
-                # Add actual plumbers from the database to the example
-                plumbers_found = False
-                for worker in worker_profiles:
-                    if any("plumb" in skill.lower() for skill in worker['skills']):
-                        conversation_content += f"| {worker['name']} | {', '.join(worker['skills'])} | {worker['rating']} | {worker['location']} | {worker['status']} |\n"
-                        plumbers_found = True
-                
-                if not plumbers_found:
-                    conversation_content += "| [No workers with plumbing skills were found in the database] | | | | |\n"
-                
-                # Example 3: Help question
-                conversation_content += """\n
-User: "What can you help me with?"
-Assistant: "As the QuickHire assistant, I can help you with:
-
-1. **Finding Workers**: I can search our database for workers with specific skills, locations, or availability
-2. **Job Analysis**: I can analyze your current job postings and application rates
-3. **Worker Recommendations**: I can suggest suitable workers for your specific job requirements
-4. **Application Management**: I can show you which workers have applied to your jobs
-5. **Image Analysis**: You can upload images of work that needs to be done, and I'll suggest workers with relevant skills"
-
-"""
-                
-                # Add chat history (limited to last 10 messages)
-                conversation_content += "\n## CURRENT CONVERSATION\n\n"
-                for msg in session['ai_chat_history'][-10:]:
-                    role = "User" if msg['role'] == 'user' else "Assistant"
-                    conversation_content += f"{role}: {msg['content']}\n\n"
-                
-                # Add the current query
-                if uploaded_image:
-                    conversation_content += "User: [Uploaded an image of work that needs to be done]\n\nPlease analyze this image and suggest suitable workers from the database who have the skills needed for this type of work.\n\nAssistant:"
-                    ai_response = get_gemini_response(conversation_content, uploaded_image)
-                else:
-                    conversation_content += f"User: {user_message}\n\nAssistant:"
-                    ai_response = get_gemini_response(conversation_content)
-                
-                # Save AI response to chat history
-                session['ai_chat_history'].append({
-                    'role': 'assistant',
-                    'content': ai_response
+            # Get application history with this employer
+            applications = Application.query.filter_by(
+                applicant_id=worker.id
+            ).join(
+                Job, Job.id == Application.job_id
+            ).filter(
+                Job.employer_id == current_user.id
+            ).all()
+            
+            application_history = []
+            for app_item in applications:
+                application_history.append({
+                    'job_title': app_item.job.title,
+                    'status': app_item.status,
+                    'date': app_item.created_at.strftime('%Y-%m-%d')
                 })
+            
+            # Add worker profile
+            worker_profiles.append({
+                'id': worker.id,
+                'name': worker.name,
+                'location': worker.location,
+                'skills': skills_formatted,
+                'rating': rating_text,
+                'status': worker.status,
+                'hourly_rate': worker.hourly_rate if worker.hourly_rate else "Not specified",
+                'bio': worker.bio if worker.bio else "No bio provided",
+                'application_history': application_history
+            })
+        
+        # Build job details for context
+        job_details = []
+        for job in employer_jobs:
+            applications_count = len(job.applications)
+            accepted_count = len([a for a in job.applications if a.status == 'accepted'])
+            
+            job_details.append({
+                'id': job.id,
+                'title': job.title,
+                'location': job.location,
+                'wage': job.wage,
+                'description': job.description,
+                'work_date': job.work_date.strftime('%Y-%m-%d'),
+                'status': job.status,
+                'applications_count': applications_count,
+                'accepted_count': accepted_count,
+                'is_filled': job.is_filled
+            })
+        
+        # Initialize chat history
+        history = session.get('ai_chat_history', [])
+        
+        # Get the user message
+        user_message = request.form.get('user_message', '').strip()
+        
+        # Handle image upload if present
+        uploaded_image = None
+        saved_image_name = None
+        image_mime = "image/jpeg"
+        if 'image' in request.files and request.files['image'].filename != '':
+            file = request.files['image']
+            if file and allowed_file(file.filename):
+                # NEW: unique filename so uploads never overwrite each other
+                filename = f"ai_{current_user.id}_{int(time.time())}_{secure_filename(file.filename)}"
+                saved_image_name = filename
+                file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                file.save(file_path)
                 
-                # Save chat history to session
+                # NEW: detect the real mime type from the extension instead of always claiming JPEG
+                ext = filename.rsplit('.', 1)[1].lower()
+                image_mime = {'png': 'image/png', 'gif': 'image/gif'}.get(ext, 'image/jpeg')
+                
+                # Prepare image for AI
+                with open(file_path, "rb") as img_file:
+                    uploaded_image = img_file.read()
+        
+        if user_message or uploaded_image:
+            user_content = user_message if user_message else "[Uploaded an image of work that needs to be done]"
+            
+            # Build the history for this call (this turn included) without touching the session yet
+            call_history = history[-(MAX_CHAT_HISTORY_MESSAGES - 1):] + [{'role': 'user', 'content': user_content}]
+            # Gemini requires the conversation to start with a user turn
+            while call_history and call_history[0]['role'] != 'user':
+                call_history.pop(0)
+            
+            system_prompt = build_ai_assistant_system_prompt(worker_profiles, job_details)
+            ai_response, ok = get_gemini_response(system_prompt, call_history, uploaded_image, image_mime)
+            
+            if ok:
+                # Only successful exchanges are saved, so errors never pollute the history.
+                # Content is truncated to keep the cookie-based session under its ~4 KB limit.
+                user_entry = {'role': 'user', 'content': user_content[:MAX_STORED_MESSAGE_CHARS]}
+                if saved_image_name:
+                    # NEW: remember the image so the template can show it in the chat
+                    user_entry['image'] = saved_image_name
+                history.append(user_entry)
+                history.append({'role': 'assistant', 'content': ai_response[:MAX_STORED_MESSAGE_CHARS]})
+                session['ai_chat_history'] = history[-MAX_CHAT_HISTORY_MESSAGES:]
                 session.modified = True
-                
-            except Exception as e:
-                print(f"Error in AI assistant: {str(e)}")
-                ai_response = f"I'm sorry, I encountered an error: {str(e)}"
-                session['ai_chat_history'].append({
-                    'role': 'assistant',
-                    'content': ai_response
-                })
+            else:
+                # Show the error to the user for this request only (not stored in history)
+                flash(ai_response, 'warning')
     
     return render_template('ai_assistant.html', 
                           chat_history=session.get('ai_chat_history', []),
@@ -2692,9 +2649,10 @@ def rate_worker(application_id):
             return redirect(url_for('rate_worker', application_id=application_id))
         
         # Create new review
+        # FIXED: the model column is `comments`, not `comment` (this raised a TypeError before)
         review = Review(
             rating=rating,
-            comment=comment,
+            comments=comment,
             reviewer_id=current_user.id,
             reviewee_id=application.applicant_id,
             job_id=application.job_id

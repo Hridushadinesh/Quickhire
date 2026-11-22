@@ -416,9 +416,14 @@
                                     <img src="{{ url_for('static', filename='images/ai-avatar.png') }}" alt="AI" class="message-avatar" onerror="this.src='https://ui-avatars.com/api/?name=AI&background=7c3aed&color=fff'">
                                 {% endif %}
                                 <div class="message-bubble">
-                                    {% if message.role == 'assistant' %}
+                                                                        {% if message.role == 'assistant' %}
                                         <div class="markdown-content" id="markdown-content-{{ loop.index }}">{{ message.content }}</div>
                                     {% else %}
+                                        {% if message.image %}
+                                            <img src="{{ url_for('static', filename='uploads/' ~ message.image) }}"
+                                                 alt="Uploaded image"
+                                                 style="max-width: 220px; max-height: 220px; border-radius: 12px; display: block; margin-bottom: 8px;">
+                                        {% endif %}
                                         {{ message.content }}
                                     {% endif %}
                                 </div>

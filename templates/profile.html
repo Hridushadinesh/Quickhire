@@ -411,7 +411,9 @@
             <div class="profile-avatar-wrapper">
                 {% if user.profile_pic %}
                     <div class="position-relative">
-                        <img src="{{ user.profile_pic }}" class="profile-avatar" alt="{{ user.name }}">
+                        <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}"
+     class="profile-avatar"
+     alt="{{ user.name }}">
                         {% if user.user_type == 'worker' %}
                             <div class="profile-status-badge bg-{{ 'success' if user.status == 'available' else 'warning' if user.status == 'busy' else 'danger' }}"></div>
                         {% endif %}

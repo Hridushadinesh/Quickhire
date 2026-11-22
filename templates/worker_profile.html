@@ -6,18 +6,21 @@
 <div class="container py-5">
     <div class="row">
         <!-- Profile Header -->
-        <div class="col-md-4 mb-4">
-            <div class="card">
-                <div class="card-body text-center">
-                    {% if worker.profile_pic %}
-                        <img src="{{ worker.profile_pic }}" alt="{{ worker.name }}" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
-                    {% else %}
-                        <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center text-white bg-secondary" style="width: 150px; height: 150px; font-size: 4rem;">
-                            {{ worker.name[0] }}
-                        </div>
-                    {% endif %}
-                    <h3 class="mb-2">{{ worker.name }}</h3>
-                    <p class="text-muted mb-3">{{ worker.email }}</p>
+        <div class="card-body text-center">
+    {% if worker.profile_pic %}
+        <img src="{{ url_for('static', filename='uploads/' + worker.profile_pic) }}"
+             alt="{{ worker.name }}"
+             class="rounded-circle mb-3"
+             style="width: 150px; height: 150px; object-fit: cover;">
+    {% else %}
+        <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center text-white bg-secondary"
+             style="width: 150px; height: 150px; font-size: 4rem;">
+            {{ worker.name[0] }}
+        </div>
+    {% endif %}
+
+    <h3 class="mb-2">{{ worker.name }}</h3>
+    <p class="text-muted mb-3">{{ worker.email }}</p>
                     
                     <!-- Rating Display -->
                     <div class="mb-3">

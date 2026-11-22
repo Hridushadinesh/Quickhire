@@ -1,18 +1,9 @@
-# Python virtual environment
+.env
+*.db
+instance/
+static/uploads/
+test_env/
 venv/
-.venv/
-
-# Python cache
 __pycache__/
 *.pyc
-
-# Environment variables and API keys
-.env
-
-# Local database and instance files
-*.db
-*.sqlite3
-instance/
-
-# Other generated files
-*.zip
+.vscode/
